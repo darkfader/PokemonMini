@@ -1,0 +1,6 @@
+NOTE: This is still a beta version!
+
+	pmas					assembler
+	pmdis					disassembler
+	test/readme.S			a quick reference of directives and required syntax
+	cpu/*.s					CPU specific stuff
