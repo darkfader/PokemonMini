@@ -19,6 +19,8 @@ TODO:
 #include <string.h>
 #ifdef WIN32
 #include <io.h>			// for unlink
+#else
+#include <unistd.h>		// for unlink
 #endif
 #include "pmas.h"
 #include "eval.h"
