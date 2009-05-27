@@ -1,22 +1,20 @@
 VERSION := 14
 MINDX_ZIP := "http://pokeme.shizzle.it/infos/PM Dev/Assemblers/mindx_v13.zip"
 VERSION2 :=
-PATH := .:$(PATH)
+PATH := .:/bin:/usr/bin:$(PATH)
 #CC := $(CXX)
 LD := $(CXX)
-FLAGS = -O3 -fomit-frame-pointer -march=i586 -mcpu=i686 -mno-cygwin -DVERSION="\"0.$(VERSION)$(VERSION2)\""
-CFLAGS = $(FLAGS)
-CPPFLAGS = $(FLAGS)
-LDFLAGS = $(FLAGS)
-#COMPARE = fc /b
+CFLAGS := -DVERSION="\"0.$(VERSION)$(VERSION2)\""
+#-march=i586 -mcpu=i686 -O3 -fomit-frame-pointer
+LDFLAGS := 
 COMPARE = diff -q --binary
 PMDIS = pmdis
-OUTPUTS = pmas cpu/pm.s
+OUTPUTS = obj/ pmas cpu/pm.s
 #pmdis
 
 .PHONY: help
 help:
-	@echo "Targets: clean release debug releasetest debugtest"
+	@echo "Targets: release debug releasetest debugtest clean zap"
 
 ../pmas-0.$(VERSION).tar.gz: zap
 	tar -czf $@ *
@@ -24,19 +22,22 @@ help:
 ../pmas-0.$(VERSION).zip: release releasetest clean
 	zip - -q -9 -r . -x ./src/ ./obj/ ./src/* ./obj/* > $@
 
+obj/:
+	mkdir obj
+
 .PHONY: upload
 upload: ../pmas-0.$(VERSION).tar.gz ../pmas-0.$(VERSION).zip
 	$(foreach file,$+,$(MAKE) $(file);)
 	$(foreach file,$+,curl --url ftp://upload.sourceforge.net/incoming/ --upload-file $(file);)
 
 .PHONY: debug
-debug: FLAGS += -g -DDEBUG
+debug: CFLAGS += -g -DDEBUG
 debug: $(OUTPUTS)
 
 .PHONY: release
+release: CFLAGS += -O3
+#release: LDFLAGS += -s
 release: $(OUTPUTS)
-	-( strip pmas.exe && upx -9 -q pmas.exe )
-#	-( strip pmdis.exe && upx -9 -q pmdis.exe )
 
 .PHONY: debugtest
 debugtest: PMAS = gdb -q --args pmas
@@ -77,11 +78,11 @@ src/pmdis.cpp:: src/*.h
 
 cpu/pm.s: cpu/mindx.txt parsemindx
 	parsemindx cpu/mindx.txt cpu/pm.s highlight.tmp
-	(cat cpu/pm_wordfile_head.txt; /bin/sort -u highlight.tmp) > cpu/pm_wordfile.txt
+	(cat cpu/pm_wordfile_head.txt; sort -u highlight.tmp) > cpu/pm_wordfile.txt
 	rm highlight.tmp
 
 parsemindx: src/parsemindx.cpp
-	$(CXX) $(CPPFLAGS) -o $@ $<
+	$(CXX) $(CFLAGS) -o $@ $<
 
 cpu/mindx.txt:
 	wget -O mindx.zip $(MINDX_ZIP)
@@ -89,7 +90,7 @@ cpu/mindx.txt:
 	rm mindx.zip
 
 obj/%.o: src/%.cpp
-	$(CXX) $(CPPFLAGS) -c -o $@ $<
+	$(CXX) $(CFLAGS) -c -o $@ $<
 
 .PHONY: clean
 clean:
