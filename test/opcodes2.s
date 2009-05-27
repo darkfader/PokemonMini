@@ -1,372 +1,372 @@
 	;;.include	cpu/pm.s
-	addb a, a
-	addb a, b
-	addb a, [hl]
-	addb a, [nn+$00]
-	addb a, [x1]
-	addb a, [x2]
-	addb a, [$0000]
-	addb a, $00
-	addcb a, a
-	addcb a, b
-	addcb a, [hl]
-	addcb a, [nn+$00]
-	addcb a, [x1]
-	addcb a, [x2]
-	addcb a, [$0000]
-	addcb a, $00
-	addw ba, $0000
-	addw hl, ba
-	addw hl, hl
-	addw hl, x1
-	addw hl, x2
-	addw hl, $0000
-	addw sp, ba
-	addw sp, hl
-	addw sp, $0000
-	addw x1, ba
-	addw x1, hl
-	addw x1, $0000
-	addw x2, ba
-	addw x2, hl
-	addw x2, $0000
-	andb a, a
-	andb a, b
-	andb a, [hl]
-	andb a, [nn+$00]
-	andb a, [x1]
-	andb a, [x2]
-	andb a, [$0000]
-	andb a, $00
-	andb b, $00
-	andb flags, $00
-	andb h, $00
-	andb l, $00
-	andb [hl], a
-	andb [hl], [x1]
-	andb [hl], [x2]
-	andb [hl], $00
-	andb [nn+$00], $00
-	bcdd 
-	bcde 
-	bcdx a
-	bcdx [hl]
-	callb @00000064
-	call @00000167
-	cmpb a, a
-	cmpb a, b
-	cmpb a, [hl]
-	cmpb a, [nn+$00]
-	cmpb a, [x1]
-	cmpb a, [x2]
-	cmpb a, [$0000]
-	cmpb a, $00
-	cmpb b, $00
-	cmpb h, $00
-	cmpb l, $00
-	cmpb n, $00
-	cmpw ba, $0000
-	cmpw hl, $0000
-	cmpw sp, $0000
-	cmpw x1, $0000
-	cmpw x2, $0000
-	decb a
-	decb b
-	decb h
-	decb l
-	decb n
-	decb [hl]
-	decb [nn+$00]
-	decw ba
-	decw hl
-	decw sp
-	decw x1
-	decw x2
+	add a, a
+	add a, b
+	add a, [hl]
+	add a, [n+$00]
+	add a, [x]
+	add a, [y]
+	add a, [$0000]
+	add a, $00
+	adc a, a
+	adc a, b
+	adc a, [hl]
+	adc a, [n+$00]
+	adc a, [x]
+	adc a, [y]
+	adc a, [$0000]
+	adc a, $00
+	add ba, $0000
+	add hl, ba
+	add hl, hl
+	add hl, x
+	add hl, y
+	add hl, $0000
+	add sp, ba
+	add sp, hl
+	add sp, $0000
+	add x, ba
+	add x, hl
+	add x, $0000
+	add y, ba
+	add y, hl
+	add y, $0000
+	and a, a
+	and a, b
+	and a, [hl]
+	and a, [n+$00]
+	and a, [x]
+	and a, [y]
+	and a, [$0000]
+	and a, $00
+	and b, $00
+	and f, $00
+	and h, $00
+	and l, $00
+	and [hl], a
+	and [hl], [x]
+	and [hl], [y]
+	and [hl], $00
+	and [n+$00], $00
+	unpack
+	pack
+	swap a
+	swap [hl]
+	call @00000064
+	callw @00000167
+	cmp a, a
+	cmp a, b
+	cmp a, [hl]
+	cmp a, [n+$00]
+	cmp a, [x]
+	cmp a, [y]
+	cmp a, [$0000]
+	cmp a, $00
+	cmp b, $00
+	cmp h, $00
+	cmp l, $00
+	cmp n, $00
+	cmp ba, $0000
+	cmp hl, $0000
+	cmp sp, $0000
+	cmp x, $0000
+	cmp y, $0000
+	dec a
+	dec b
+	dec h
+	dec l
+	dec n
+	dec [hl]
+	dec [n+$00]
+	dec ba
+	dec hl
+	dec sp
+	dec x
+	dec y
 	div hl, a
-	incb a
-	incb b
-	incb h
-	incb l
-	incb n
-	incb [hl]
-	incb [nn+$00]
-	incw ba
-	incw hl
-	incw sp
-	incw x1
-	incw x2
-	int $00
-	jcb @000000AF
-	jc @000001B2
+	inc a
+	inc b
+	inc h
+	inc l
+	inc n
+	inc [hl]
+	inc [n+$00]
+	inc ba
+	inc hl
+	inc sp
+	inc x
+	inc y
+	cint $00
+	jc @000000AF
+	jcw @000001B2
 	jdbnz @000000B4
 	jint $00
 	jmp hl
-	jmpb @000000B9
-	jmp @000001BC
-	jncb @000000BE
-	jnc @000001C1
-	jnzb @000000C3
-	jnz @000001C6
-	jzb @000000C8
-	jz @000001CB
-	movb a, a
-	movb a, b
-	movb a, flags
-	movb a, h
-	movb a, l
-	movb a, n
-	movb a, [hl]
-	movb a, [nn+$00]
-	movb a, [x1+l]
-	movb a, [x1 + $00]
-	movb a, [x1]
-	movb a, [x2+l]
-	movb a, [x2+$00]
-	movb a, [x2]
-	movb a, [$0000]
-	movb a, $00
-	movb b, a
-	movb b, b
-	movb b, h
-	movb b, l
-	movb b, [hl]
-	movb b, [nn+$00]
-	movb b, [x1+l]
-	movb b, [x1+$00]
-	movb b, [x1]
-	movb b, [x2+l]
-	movb b, [x2+$00]
-	movb b, [x2]
-	movb b, [$0000]
-	movb b, $00
-	movb flags, a
-	movb flags, $00
-	movb h, a
-	movb h, b
-	movb h, h
-	movb h, l
-	movb h, [hl]
-	movb h, [nn+$00]
-	movb h, [x1]
-	movb h, [x2]
-	movb h, [$0000]
-	movb h, $00
-	movb l, a
-	movb l, b
-	movb l, h
-	movb l, l
-	movb l, [hl]
-	movb l, [nn+$00]
-	movb l, [x1]
-	movb l, [x2]
-	movb l, [$0000]
-	movb l, $00
-	movb n, a
-	movb [hl], a
-	movb [hl], b
-	movb [hl], h
-	movb [hl], l
-	movb [hl], [hl]
-	movb [hl], [nn+$00]
-	movb [hl], [x1]
-	movb [hl], [x2]
-	movb [hl], $00
-	movb [nn+$00], a
-	movb [nn+$00], b
-	movb [nn+$00], h
-	movb [nn+$00], l
-	movb [nn+$00], [hl]
-	movb [nn+$00], [x1]
-	movb [nn+$00], [x2]
-	movb [nn+$00], $00
-	movb [x1+l], a
-	movb [x1+l], b
-	movb [x1+$00], a
-	movb [x1+$00], b
-	movb [x1], a
-	movb [x1], b
-	movb [x1], h
-	movb [x1], l
-	movb [x1], [hl]
-	movb [x1], [nn+$00]
-	movb [x1], [x1]
-	movb [x1], [x2]
-	movb [x1], $00
-	movb [x2+l], a
-	movb [x2+l], b
-	movb [x2+$00], a
-	movb [x2+$00], b
-	movb [x2], a
-	movb [x2], b
-	movb [x2], h
-	movb [x2], l
-	movb [x2], [hl]
-	movb [x2], [nn+$00]
-	movb [x2], [x1]
-	movb [x2], [x2]
-	movb [x2], $00
-	movb [$0000], a
-	movb [$0000], b
-	movb [$0000], h
-	movb [$0000], l
-	movw ba, ba
-	movw ba, hl
-	movw ba, x1
-	movw ba, x2
-	movw ba, [$0000]
-	movw ba, $0000
-	movw hl, ba
-	movw hl, hl
-	movw hl, x1
-	movw hl, x2
-	movw hl, [$0000]
-	movw hl, $0000
-	movw nn, $0000
-	movw sp, $0000
-	movw x1, ba
-	movw x1, hl
-	movw x1, x1
-	movw x1, x2
-	movw x1, [$0000]
-	movw x1, $0000
-	movw x2, ba
-	movw x2, hl
-	movw x2, x1
-	movw x2, x2
-	movw x2, [$0000]
-	movw x2, $0000
-	movw [$0000], ba
-	movw [$0000], hl
-	movw [$0000], x1
-	movw [$0000], x2
-	movx a, hl
-	movx a, x1
-	movx a, x2
-	movx hl, a
-	movx hl, $00
-	movx x1, a
-	movx x1, $00
-	movx x2, a
-	movx x2, $00
+	jmp @000000B9
+	jmpw @000001BC
+	jnc @000000BE
+	jncw @000001C1
+	jnz @000000C3
+	jnzw @000001C6
+	jz @000000C8
+	jzw @000001CB
+	mov a, a
+	mov a, b
+	mov a, f
+	mov a, h
+	mov a, l
+	mov a, n
+	mov a, [hl]
+	mov a, [n+$00]
+	mov a, [x+l]
+	mov a, [x + $00]
+	mov a, [x]
+	mov a, [y+l]
+	mov a, [y+$00]
+	mov a, [y]
+	mov a, [$0000]
+	mov a, $00
+	mov b, a
+	mov b, b
+	mov b, h
+	mov b, l
+	mov b, [hl]
+	mov b, [n+$00]
+	mov b, [x+l]
+	mov b, [x+$00]
+	mov b, [x]
+	mov b, [y+l]
+	mov b, [y+$00]
+	mov b, [y]
+	mov b, [$0000]
+	mov b, $00
+	mov f, a
+	mov f, $00
+	mov h, a
+	mov h, b
+	mov h, h
+	mov h, l
+	mov h, [hl]
+	mov h, [n+$00]
+	mov h, [x]
+	mov h, [y]
+	mov h, [$0000]
+	mov h, $00
+	mov l, a
+	mov l, b
+	mov l, h
+	mov l, l
+	mov l, [hl]
+	mov l, [n+$00]
+	mov l, [x]
+	mov l, [y]
+	mov l, [$0000]
+	mov l, $00
+	mov n, a
+	mov [hl], a
+	mov [hl], b
+	mov [hl], h
+	mov [hl], l
+	mov [hl], [hl]
+	mov [hl], [n+$00]
+	mov [hl], [x]
+	mov [hl], [y]
+	mov [hl], $00
+	mov [n+$00], a
+	mov [n+$00], b
+	mov [n+$00], h
+	mov [n+$00], l
+	mov [n+$00], [hl]
+	mov [n+$00], [x]
+	mov [n+$00], [y]
+	mov [n+$00], $00
+	mov [x+l], a
+	mov [x+l], b
+	mov [x+$00], a
+	mov [x+$00], b
+	mov [x], a
+	mov [x], b
+	mov [x], h
+	mov [x], l
+	mov [x], [hl]
+	mov [x], [n+$00]
+	mov [x], [x]
+	mov [x], [y]
+	mov [x], $00
+	mov [y+l], a
+	mov [y+l], b
+	mov [y+$00], a
+	mov [y+$00], b
+	mov [y], a
+	mov [y], b
+	mov [y], h
+	mov [y], l
+	mov [y], [hl]
+	mov [y], [n+$00]
+	mov [y], [x]
+	mov [y], [y]
+	mov [y], $00
+	mov [$0000], a
+	mov [$0000], b
+	mov [$0000], h
+	mov [$0000], l
+	mov ba, ba
+	mov ba, hl
+	mov ba, x
+	mov ba, y
+	mov ba, [$0000]
+	mov ba, $0000
+	mov hl, ba
+	mov hl, hl
+	mov hl, x
+	mov hl, y
+	mov hl, [$0000]
+	mov hl, $0000
+	mov n, $0000
+	mov sp, $0000
+	mov x, ba
+	mov x, hl
+	mov x, x
+	mov x, y
+	mov x, [$0000]
+	mov x, $0000
+	mov y, ba
+	mov y, hl
+	mov y, x
+	mov y, y
+	mov y, [$0000]
+	mov y, $0000
+	mov [$0000], ba
+	mov [$0000], hl
+	mov [$0000], x
+	mov [$0000], y
+	mov a, i
+	mov a, xi
+	mov a, yi
+	mov i, a
+	mov i, $00
+	mov xi, a
+	mov xi, $00
+	mov yi, a
+	mov yi, $00
 	mul l, a
 	nop 
-	notb a
-	notb b
-	notb [hl]
-	notb [nn+$00]
-	orb a, a
-	orb a, b
-	orb a, [hl]
-	orb a, [nn+$00]
-	orb a, [x1]
-	orb a, [x2]
-	orb a, [$0000]
-	orb a, $00
-	orb b, $00
-	orb flags, $00
-	orb h, $00
-	orb l, $00
-	orb [hl], a
-	orb [hl], [x1]
-	orb [hl], [x2]
-	orb [hl], $00
-	orb [nn+$00], $00
-	popb a
-	popb b
-	popb h
-	popb l
+	not a
+	not b
+	not [hl]
+	not [n+$00]
+	or a, a
+	or a, b
+	or a, [hl]
+	or a, [n+$00]
+	or a, [x]
+	or a, [y]
+	or a, [$0000]
+	or a, $00
+	or b, $00
+	or f, $00
+	or h, $00
+	or l, $00
+	or [hl], a
+	or [hl], [x]
+	or [hl], [y]
+	or [hl], $00
+	or [n+$00], $00
+	pop a
+	pop b
+	pop h
+	pop l
 	popa 
 	popax 
-	popb flags
-	popb n
-	popw ba
-	popw hl
-	popw x1
-	popw x2
-	popx hl
-	popxxx 
+	pop f
+	pop n
+	pop ba
+	pop hl
+	pop x
+	pop y
+	pop i
+	popx
 	pusha 
 	pushax 
-	pushb a
-	pushb b
-	pushb flags
-	pushb h
-	pushb l
-	pushb n
-	pushw ba
-	pushw hl
-	pushw x1
-	pushw x2
-	pushx hl
-	pushxxx 
-	ret 
-	reti 
-	rolb a
-	rolb b
-	rolcb a
-	rolcb b
-	rorb a
-	rorb b
-	rorcb a
-	rorcb b
-	shlb a
-	shlb b
-	shrb a
-	shrb b
-	subb a, a
-	subb a, b
-	subb a, [hl]
-	subb a, [nn+$00]
-	subb a, [x1]
-	subb a, [x2]
-	subb a, [$0000]
-	subb a, $00
-	subcb a, a
-	subcb a, b
-	subcb a, [hl]
-	subcb a, [nn+$00]
-	subcb a, [x1]
-	subcb a, [x2]
-	subcb a, [$0000]
-	subcb a, $00
-	subw ba, $0000
-	subw hl, ba
-	subw hl, hl
-	subw hl, x1
-	subw hl, x2
-	subw hl, $0000
-	subw sp, ba
-	subw sp, hl
-	subw sp, $0000
-	subw x1, ba
-	subw x1, hl
-	subw x1, $0000
-	subw x2, ba
-	subw x2, hl
-	subw x2, $0000
-	testb a, b
-	testb a, $00
-	testb b, $00
-	testb [hl], $00
-	testb [nn+$00], $00
-	xchgb a, b
-	xchgb a, [hl]
-	xchgw ba, hl
-	xchgw ba, sp
-	xchgw ba, x1
-	xchgw ba, x2
-	xorb a, a
-	xorb a, b
-	xorb a, [hl]
-	xorb a, [nn+$00]
-	xorb a, [x1]
-	xorb a, [x2]
-	xorb a, [$0000]
-	xorb a, $00
-	xorb b, $00
-	xorb flags, $00
-	xorb h, $00
-	xorb l, $00
-	xorb [nn+$00], $00
+	push a
+	push b
+	push f
+	push h
+	push l
+	push n
+	push ba
+	push hl
+	push x
+	push y
+	push i
+	pushx
+	ret
+	reti
+	rol a
+	rol b
+	rolc a
+	rolc b
+	ror a
+	ror b
+	rorc a
+	rorc b
+	shl a
+	shl b
+	shr a
+	shr b
+	sub a, a
+	sub a, b
+	sub a, [hl]
+	sub a, [n+$00]
+	sub a, [x]
+	sub a, [y]
+	sub a, [$0000]
+	sub a, $00
+	sbc a, a
+	sbc a, b
+	sbc a, [hl]
+	sbc a, [n+$00]
+	sbc a, [x]
+	sbc a, [y]
+	sbc a, [$0000]
+	sbc a, $00
+	sub ba, $0000
+	sub hl, ba
+	sub hl, hl
+	sub hl, x
+	sub hl, y
+	sub hl, $0000
+	sub sp, ba
+	sub sp, hl
+	sub sp, $0000
+	sub x, ba
+	sub x, hl
+	sub x, $0000
+	sub y, ba
+	sub y, hl
+	sub y, $0000
+	tst a, b
+	tst a, $00
+	tst b, $00
+	tst [hl], $00
+	tst [n+$00], $00
+	xchg a, b
+	xchg a, [hl]
+	xchg ba, hl
+	xchg ba, sp
+	xchg ba, x
+	xchg ba, y
+	xor a, a
+	xor a, b
+	xor a, [hl]
+	xor a, [n+$00]
+	xor a, [x]
+	xor a, [y]
+	xor a, [$0000]
+	xor a, $00
+	xor b, $00
+	xor f, $00
+	xor h, $00
+	xor l, $00
+	xor [n+$00], $00
 test:	jle		test
 ; TODO: generate the above opcodes

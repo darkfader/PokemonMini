@@ -62,10 +62,10 @@ Record_name:		.ds		20
 Record_size:
 	.endreloc
 
-	mov		x1, 0x1800
-	mov		b, [x1+Record_name_len]
+	mov		x, 0x1800
+	mov		b, [x+Record_name_len]
 	mov		l, Record_name
-	mov		a, [x1+l]
+	mov		a, [x+l]
 
 ;-----------------------------------------------------------------------------
 ; C PreProcessor example. The extension .S (uppercase) is often used.
@@ -86,7 +86,7 @@ Record_size:
 DoSomething:
 	nop
 _loop:
-	jmpb	_loop						; force short jump with 'B' suffix
+	jmp	_loop						; force short jump with 'B' suffix
 
 DoSomething2:
 _loop:
@@ -110,7 +110,7 @@ _loop:
 ;-----------------------------------------------------------------------------
 
 	.if		1==1
-		mov		x1, -123
+		mov		x, -123
 	.elsif	(2==2)
 		this assembler rules !
 	.else
@@ -166,7 +166,7 @@ _local_label:
 	 mov	a,   0xAA					; hex
 	mov		a, @AA						; hex (deprecated)
 	mov		a, 'A'						; ascii value
-	mov		x1, 'x1'					; two ascii values
+	mov		x, 'x1'						; 16-bit ascii value
 	mov		a, '\x40'					; hex
 
 ;-----------------------------------------------------------------------------
