@@ -47,8 +47,9 @@ debugtest: debug #test/opcodes1.min test/opcodes2.min
 
 .PHONY: releasetest
 releasetest: PMAS = pmas
-releasetest: release test/readme.min test/test1.min test/test2.min test/opcodes1.min test/opcodes2.min
+releasetest: release test/readme.min test/test1.min test/test2.min test/opcodes1.min test/opcodes2.min test/opcodes3.min
 	$(COMPARE) test/opcodes1.min test/opcodes2.min
+	$(COMPARE) test/opcodes1.min test/opcodes3.min
 	$(COMPARE) test/test1.min test/test2.min
 
 #	$(PMDIS) test/opcodes2.min test/opcodes2.dis.s
