@@ -51,8 +51,8 @@
 	pack
 	swap a
 	swap [hl]
-	call @00000064
-	callw @00000167
+	callb @00000064
+	call @00000167
 	cmp a, a
 	cmp a, b
 	cmp a, [hl]
@@ -96,19 +96,19 @@
 	inc x
 	inc y
 	cint $00
-	jc @000000AF
-	jcw @000001B2
+	jcb @000000AF
+	jc @000001B2
 	jdbnz @000000B4
 	jint $00
 	jmp hl
-	jmp @000000B9
-	jmpw @000001BC
-	jnc @000000BE
-	jncw @000001C1
-	jnz @000000C3
-	jnzw @000001C6
-	jz @000000C8
-	jzw @000001CB
+	jmpb @000000B9
+	jmp @000001BC
+	jncb @000000BE
+	jnc @000001C1
+	jnzb @000000C3
+	jnz @000001C6
+	jzb @000000C8
+	jz @000001CB
 	mov a, a
 	mov a, b
 	mov a, f
