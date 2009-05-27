@@ -120,6 +120,7 @@ EEKS{printf("local label? %s\n", name2);}
 	if (!s && (pass == 1)) return ValueType::zero;		// assume forward reference is a number
 	
 	if (!s) { eprintf("Symbol '%s' not defined.\n", name); return ValueType::zero; }
+	if (!s->value.defined()) { eprintf("Symbol '%s' not defined.\n", name); return ValueType::zero; }
 
 EEKS{printf("GetSymbolValue %s, ", name); s->value.print();}
 
@@ -154,9 +155,7 @@ EEKS{printf("after eval: "); n.print();}
  */
 void UnsetSymbol(char *name)
 {
+EEKS{printf("UnsetSymbol %s, ", name);}
 	Symbol *s = FindSymbol(name);
-	if (s == symbols) symbols = s->right;	// was first
-	if (s->right) s->right->left = s->left;
-	if (s->left) s->left->right = s->right;
-	delete s;
+	s->value.undefine();
 }
