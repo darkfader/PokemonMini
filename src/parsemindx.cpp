@@ -19,7 +19,8 @@ int outputs = 0;
 Instruction instruction;
 
 char *rb[4] = {"A","B","L","H"};
-char *rw[4] = {"BA","HL","X","Y"};
+char *rw[6] = {"BA","HL","X","Y","X1","X2"};
+int rwnum[6] = {0, 1, 2, 3, 2, 3};
 
 int line;
 int extended = 0xAA;
@@ -154,30 +155,30 @@ void DoCalc(char *a, char *b)
 {
 	if (strstr(b, "+rw1"))
 	{
-		for (int i=0; i<4; i++)
+		for (int i=0; i<6; i++)
 		{
 			char tmp_a[BUFSIZE]; strcpy(tmp_a, a); strreplace(tmp_a, "rw1", rw[i]);
-			char tmp_b[BUFSIZE]; strcpy(tmp_b, b); strreplacenum(tmp_b, "rw1", i);
+			char tmp_b[BUFSIZE]; strcpy(tmp_b, b); strreplacenum(tmp_b, "rw1", rwnum[i]);
 			DoCalc(tmp_a, tmp_b);
 		}
 	}
 	else
 	if (strstr(b, "+rw2"))
 	{
-		for (int i=0; i<4; i++)
+		for (int i=0; i<6; i++)
 		{
 			char tmp_a[BUFSIZE]; strcpy(tmp_a, a); strreplace(tmp_a, "rw2", rw[i]);
-			char tmp_b[BUFSIZE]; strcpy(tmp_b, b); strreplacenum(tmp_b, "rw2", i);
+			char tmp_b[BUFSIZE]; strcpy(tmp_b, b); strreplacenum(tmp_b, "rw2", rwnum[i]);
 			DoCalc(tmp_a, tmp_b);
 		}
 	}
 	else
 	if (strstr(b, "+rw"))
 	{
-		for (int i=0; i<4; i++)
+		for (int i=0; i<6; i++)
 		{
 			char tmp_a[BUFSIZE]; strcpy(tmp_a, a); strreplace(tmp_a, "rw", rw[i]);
-			char tmp_b[BUFSIZE]; strcpy(tmp_b, b); strreplacenum(tmp_b, "rw", i);
+			char tmp_b[BUFSIZE]; strcpy(tmp_b, b); strreplacenum(tmp_b, "rw", rwnum[i]);
 			DoCalc(tmp_a, tmp_b);
 		}
 	}
@@ -290,9 +291,9 @@ bool ParseLine(char *cs)
 	strcpy(s, cs);
 	
 	// extended sets
-	if (strstr(s, " INSTRUCTION SET") == s) extended = 0x00;
+	if (strstr(s, "INSTRUCTION SET") == s) extended = 0x00;
 	if (strstr(s, "EXTENDED ") == s) { extended = s[9] - '0' + 0xCE; }
-	
+
 	if ((s[0] != '|') && (s[0] != '+')) return false;
 	
 	int repaired = 0;
@@ -507,6 +508,7 @@ bool ParseLine(char *cs)
 	//if (line == 496) { fprintf(stderr, "%s %s\n", a, b); exit(1); }			// ******************************
 
 	// other syntax
+	if (strstr(s, " mov")) { strreplace(s, " mov", " ld"); ParseLine(s); }
 /*
 	if (strstr(s, " subc")) { strreplace(s, " subc", " sbc"); ParseLine(s); }
 	else if (strstr(s, " addc")) { strreplace(s, " addc", " adc"); ParseLine(s); }
