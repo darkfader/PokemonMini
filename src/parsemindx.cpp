@@ -24,8 +24,8 @@ char *rw[4] = {"BA","HL","X","Y"};
 int line;
 int extended = 0xAA;
 
-/*
- *
+/**
+ * alphabetic sorting predicate
  */
 int sort_output(const void *a, const void *b)
 {
@@ -36,8 +36,8 @@ int sort_output(const void *a, const void *b)
 	return strcmp(*(char **)a, *(char **)b);
 }
 
-/*
- *
+/**
+ * convert string to uppercase
  */
 char *STRUPR(char *a)
 {
@@ -50,6 +50,9 @@ char *STRUPR(char *a)
 	return a;
 }
 
+/**
+ * convert string to lowercase
+ */
 char *STRLWR(char *a)
 {
 	char *b = a;
@@ -61,8 +64,8 @@ char *STRLWR(char *a)
 	return a;
 }
 
-/*
- *
+/**
+ * replace first occurrence in a string
  */
 int strreplace(char *s, char *from, char *to)
 {
