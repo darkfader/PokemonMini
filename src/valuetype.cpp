@@ -4,6 +4,8 @@
 #include "valuetype.h"
 #include "eval.h"
 
+char undefined[] = "undefined";
+
 int hmmm = 0;
 #define HMMM(i)			//printf("hmmmmm=%d\n", (hmmm += i));
 
@@ -66,7 +68,7 @@ ValueType& ValueType::operator = (const ValueType &rhs)
 
 //void setString(char *s) { this->s = strdup(s); i=0; }
 
-void ValueType::Free() { if (s) { HMMM(-1); /*printf("deleting %08X '%s'\n", s, s); */ s[0] = '0'; free(s); s = 0; } }
+void ValueType::Free() { if (s) { HMMM(-1); /*printf("deleting %08X '%s'\n", s, s); */ s[0] = '0'; if (s != undefined) free(s); s = 0; } }
 ValueType::~ValueType() { Free(); }
 
 /*
@@ -91,6 +93,24 @@ ValueType::operator long () const
 const char * ValueType::getString() const
 {
 	return s;
+}
+
+/*
+ * undefine
+ */
+void ValueType::undefine()
+{
+	Free();
+	s = undefined;
+	i = 0;
+}
+
+/*
+ * defined
+ */
+bool ValueType::defined()
+{
+	return (s != undefined);
 }
 
 /*

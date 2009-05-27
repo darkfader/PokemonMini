@@ -1,12 +1,11 @@
 #ifndef _VALUETYPE_H
 #define _VALUETYPE_H
 
+extern char undefined[];
+
 /*
- * Typedefs
+ * ValueType
  */
-//typedef long ValueType;
-
-
 class ValueType
 {
 private:
@@ -38,6 +37,8 @@ public:
 	operator long () const;
 	//operator char * ();
 	const char * getString() const;		// don't destroy object yet!
+	void undefine();
+	bool defined();
 
 	void print() const;
 
