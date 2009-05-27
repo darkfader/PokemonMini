@@ -508,7 +508,7 @@ bool ParseLine(char *cs)
 	//if (line == 496) { fprintf(stderr, "%s %s\n", a, b); exit(1); }			// ******************************
 
 	// other syntax
-	if (strstr(s, " mov")) { strreplace(s, " mov", " ld"); ParseLine(s); }
+//	if (strstr(s, " mov")) { strreplace(s, " mov", " ld"); ParseLine(s); }
 /*
 	if (strstr(s, " subc")) { strreplace(s, " subc", " sbc"); ParseLine(s); }
 	else if (strstr(s, " addc")) { strreplace(s, " addc", " adc"); ParseLine(s); }
