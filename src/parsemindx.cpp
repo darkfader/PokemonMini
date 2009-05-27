@@ -19,7 +19,7 @@ int outputs = 0;
 Instruction instruction;
 
 char *rb[4] = {"A","B","L","H"};
-char *rw[4] = {"BA","HL","X1","X2"};
+char *rw[4] = {"BA","HL","X","Y"};
 
 int line;
 int extended = 0xAA;
@@ -39,20 +39,27 @@ int sort_output(const void *a, const void *b)
 /*
  *
  */
-#ifdef WIN32
-	#define STRUPR strupr
-#else
-	char *STRUPR(char *a)
+char *STRUPR(char *a)
+{
+	char *b = a;
+	while (*b)
 	{
-		char *b = a;
-		while (*b)
-		{
-			if (*b >= 'a' && *b <= 'z') *b -= 'a' - 'A';
-			b++;
-		}
-		return a;
+		if (*b >= 'a' && *b <= 'z') *b -= 'a' - 'A';
+		b++;
 	}
-#endif
+	return a;
+}
+
+char *STRLWR(char *a)
+{
+	char *b = a;
+	while (*b)
+	{
+		if (*b >= 'A' && *b <= 'Z') *b += 'a' - 'A';
+		b++;
+	}
+	return a;
+}
 
 /*
  *
@@ -202,7 +209,7 @@ void DoCalc(char *a, char *b)
 		}
 	}
 	else
-	{
+	{	
 	//fprintf(stderr, "1 %s %s\n", a, b);
 		strshift(b);
 	//fprintf(stderr, "2 %s %s\n", a, b);
@@ -210,10 +217,8 @@ void DoCalc(char *a, char *b)
 	//fprintf(stderr, "3 %s %s\n", a, b);
 		STRUPR(a);
 
-
 		strtrimtrailing(a);
 		strtrimtrailing(b);
-
 
 		int numargs = 0;
 		if (strreplace(a, "*", "~0")) numargs++;
@@ -224,6 +229,7 @@ void DoCalc(char *a, char *b)
 		//strreplace(b, ":", "");
 
 		instruction.fmt = a;
+
 		//instruction.opcode = strtoul(b,0,16);
 		//instruction.fixed |= strtoul(b,0,16) << ((instruction.flags & FLAG_EXTENDED) ? 1 : 0);
 		unsigned int instruction_fixed = instruction.fixed | (strtoul(b,0,16) << ((instruction.flags & FLAG_EXTENDED) ? 8 : 0));
@@ -345,7 +351,6 @@ bool ParseLine(char *cs)
 	if (n < 1) return false;
 	if (a[0] == '|') return false;
 	
-	
 
 	memset(&instruction, 0, sizeof(instruction));
 
@@ -382,7 +387,7 @@ bool ParseLine(char *cs)
 		strreplace(a, "im8", "imm8");		strreplace(b, "im8", "imm8");
 		strreplace(a, "im16", "imm16");		strreplace(b, "im16", "imm16");
 	}
-	
+
 //fprintf(stderr, "%s | %s\n", a, b);
 
 
@@ -494,12 +499,12 @@ bool ParseLine(char *cs)
 		else { printf("Error at line %d: %s", line, s); exit(1); }
 	}
 
-
 	DoCalc(a,b);
 
 	//if (line == 496) { fprintf(stderr, "%s %s\n", a, b); exit(1); }			// ******************************
 
 	// other syntax
+/*
 	if (strstr(s, " subc")) { strreplace(s, " subc", " sbc"); ParseLine(s); }
 	else if (strstr(s, " addc")) { strreplace(s, " addc", " adc"); ParseLine(s); }
 	else if (strstr(s, " int ")) { strreplace(s, " int ", " cint "); ParseLine(s); }
@@ -515,7 +520,7 @@ bool ParseLine(char *cs)
 	else if (strstr(s, " sal")) { strreplace(s, " sal", " sla"); ParseLine(s); }
 	else if (strstr(s, " sar")) { strreplace(s, " sar", " sra"); ParseLine(s); }
 	else if (strstr(s, "FLAGS")) { while (strreplace(s, "FLAGS", "f")) {}; ParseLine(s); }
-	
+*/	
 	return true;
 }
 
@@ -569,7 +574,7 @@ void WriteHighlight(char *filename)
 	if (!f) { fprintf(stderr, "Cannot open file!\n"); exit(1); }
 	for (int i=0; i<outputs; i++)
 	{
-		strlwr(output[i]);
+		STRLWR(output[i]);
 		char *p = strpbrk(output[i], " \"");
 		if (p) *p = 0; else p = strchr(output[i], 0);
 		fprintf(f, "%s\n", output[i]);

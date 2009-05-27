@@ -1,11 +1,15 @@
     
 ------------------------------------------------------------------------------
-                  MIN CPU OPCODES LIST rev 13 / DAVEX 2004 
+                  MIN CPU OPCODES LIST rev 14 / DAVEX 2004 
 ------------------------------------------------------------------------------
  
  That's some days of funking intense reverse engineering, have pokefun! :-)
  
  -- DaveX (davexxx@gmail.com)
+
+ 24/5/09 :
+ Reflecting the instruction list at Sublab Pokemon-Mini instruction list.
+ More information can be read at: http://wiki.sublab.net/index.php/Pokemon_Mini
 
  14/9/04 :
  Added new opcodes and U & V registers to opcode tables, special thanks to 
@@ -31,16 +35,15 @@
  GENERAL INFO ABOUT MIN CPU
 ------------------------------------------------------------------------------
 
- Registers (8 bits) :  A, B, H, L, FLAGS, N, U, V
- Registers (16bits) :  BA
- Registers (24bits) :  HL, X1, X2, NN, SP
- 
- NN = N<<8. This register doesn't really exist as a 16bit register, but it's
- more convenient to speak about a 16bit reg.
+ Registers (8 bits) :  A, B, H, L, F, N
+ Registers (16bits) :  BA, HL, X, Y, N, SP, PC
+ Registers (banks)  :  I, XI, YI, U, V
  
  U and V are special registers. When a jump or a call is taken, U is copied
  into V. When call/interrupts are taken, V is stored on the stack and restored
  when ret/reti is called.
+
+ Note: U restore into V if the next instruction isn't a jump or a call.
   
  FLAGS layout:  [IE][??][LM][BM][SF][OF][CF][ZF]
  
@@ -50,28 +53,25 @@
  ZF = Zero Flag
  BM = BCD Mode, 1 when the arithmetic operations should be made on BCD numbers
  LM = Low Mask, 1 when arithmetic operations results should be and'ed with 0x0F
- IE = Interrupt Enable, Interrupts are enabled when IE=0, disabled when IE=1
- 
- 
+ IF = Interrupt Flag
+ ID = Interrupt Disable
+
+ Interrupts are enabled when both IF and ID are zero.
+
+ BM and LM only affects ADD, SUB, ADC and SBC.
+  
 ------------------------------------------------------------------------------
  GENERAL MEMORY LAYOUT
 ------------------------------------------------------------------------------
 
- 000000-000099 : Interrupt Vectors
- 000000-000FFF : BIOS
- 001000-0012FF : Video RAM for Non-Tiled mode (pseudo-linear)
- 001300-00135F : Video RAM (???)
- 001360-0013BF : Video RAM (Tile Map)
- 001???-001FFF : RAM (first part of RAM is reserved for video, it's safe to
-                 use RAM after 1800)
- 002000-0020FF : HARDWARE REGISTERS
- 002100-1FFFFF : ROM
- 
- On system reset, game entrypoint is 0x2102 
+ See: http://wiki.sublab.net/index.php/PM_Memory
 
 ------------------------------------------------------------------------------
  INTERRUPTS
 ------------------------------------------------------------------------------
+
+ See: http://wiki.sublab.net/index.php/PM_IRQs
+ and  http://wiki.sublab.net/index.php/PM_Bios
 
  There are 77 interrupts. Some are triggered by the hardware, all can be 
  triggered by software using the "INT" instruction.
@@ -90,648 +90,556 @@
  HARDWARE REGISTERS
 ------------------------------------------------------------------------------
 
- 002000 1 RW : ??? (reset value = $7F)
- 002001 1 RW : ??? (reset value = $30)
- 002002 1 RW : CPU mode 
-             +-------+-------+-------+-------+-------+-------+-------+-------+
-             |       |       |       |       | SPEED |       |       |       |
-             +-------+-------+-------+-------+-------+-------+-------+-------+
-             - If SPEED is set to 0, then CPU is slow, else it's fast
- 
-
- 002008 1 RW : Second counter control (reset value = $01)
-             +-------+-------+-------+-------+-------+-------+-------+-------+
-             |       |       |       |       |       |       | RESET | COUNT |
-             +-------+-------+-------+-------+-------+-------+-------+-------+
-             - If COUNT is set to 0, the second counter stop count couting 
-               ("pause mode"). If COUNT is set to 1, the second counter is
-               incremented each second.
-             - When RESET is set to 1, second counter is set to 0. 
-             - WARNING: Wait some cycles after each WRITE to this register 
-               before reading the counter, else it won't be taken into 
-               account! (A $fff loop will do!)
- 
- 002009 3 R  : Second counter (reset value = $000000)
-
- 002010 1 RW : ??? (reset value = $00)
- 
- 002040 1 RW : "1/256th of a second" counter control (reset value = $01)
-             +-------+-------+-------+-------+-------+-------+-------+-------+
-             |       |       |       |       |       |       | RESET | COUNT |
-             +-------+-------+-------+-------+-------+-------+-------+-------+
-             - If COUNT is set to 0, the ms counter stop count couting 
-               ("pause mode"). If COUNT is set to 1, the ms counter is
-               incremented each 1/256th of a second
-             - When RESET is set to 1, ms counter is set to 0. 
-             - WARNING: Wait some cycles after each WRITE to this register 
-               before reading the counter, else it won't be taken into 
-               account! (A $fff loop will do!)
- 
- 002041 1 R  : "1/256th of a second" counter (each step = 1/256th of a second)
-
- 002048 1 RW : Audio, note control, bit 2 = "play new note"
-             +-------+-------+-------+-------+-------+-------+-------+-------+
-             | PLAY0 |       |       |       |       | PLAY1 |       | SHAPE |
-             +-------+-------+-------+-------+-------+-------+-------+-------+
-             - When both PLAY signals are set to 1, sound is playing
-             - If SHAPE is set to 0, then the shape of the signal is square and
-               the register 204C ignored (and there's no counter at 204E) 
-               (not certain)
-                          
- 00204A 2 RW : Audio, Inverse of the note frequency ($3D0900/freq)
- 00204C 2 RW : Audio, Signal shape (at which count should the signal change?)
- 00204E 2 R  : 4MHz Audio counter (counts from 0 to the value of register 204A)
- 
-
- 002052 1 R  : Keypad status (0 = button pressed, 1 = button released)                 
-             +-------+-------+-------+-------+-------+-------+-------+-------+
-             | POWER | RIGHT | LEFT  | DOWN  |  UP   |   C   |   B   |   A   |
-             +-------+-------+-------+-------+-------+-------+-------+-------+
-             
-
- 002071 1 RW : Video and Audio control
-             +-------+-------+-------+-------+-------+-------+-------+-------+
-             |       |       |       |       |       |       |  VOL1 |  VOL0 |
-             +-------+-------+-------+-------+-------+-------+-------+-------+
-             - VOL is controlling the volume of the speaker. 00 = nosound,
-               01 = low volume, 10 = medium, 11 = high volume
-
- 002080 1 RW : LCD config 0
-             +-------+-------+-------+-------+-------+-------+-------+-------+
-             |       |       |TSIZE1 |TSIZE0 |ENABLE0|       | TILED |INVERT |
-             +-------+-------+-------+-------+-------+-------+-------+-------+
-             - If INVERT is set to 0 (normal mode) then 0=white and 1=black. 
-               When it is set to 1 then 0=black and 1=white on display.
-               INVERT only works in TILED = 1 !!!
-             - If TILED is set to 0 then we are in pseudo-linear mode (VRAM at
-               $1000), else we are in tiled mode (Tile Map at $1360)
-             - When TSIZE is set to 00, Tile Map is 12x8. 
-               When TSIZE is set to 01, Tile Map is 16x8. 
-               When TSIZE is set to 10 or 11, Tile Map is 24x8. 
-             - LCD screen is enabled when ENABLE0 and ENABLE1 (from register
-               $2081) are set to 1
-             
-
- 002081 1 RW : LCD config 1
-             +-------+-------+-------+-------+-------+-------+-------+-------+
-             |       |       |       |       |   1   | SLOW1 | SLOW0 |ENABLE1|
-             +-------+-------+-------+-------+-------+-------+-------+-------+
-             - If SLOW is set to 00, the LCD behaviour is normal. When it's
-               set from 01 to 11 (maximum), the behaviour is slow and moving 
-               objects leave traces on screen
-             - LCD screen is enabled when ENABLE1 and ENABLE0 (from register
-               $2080) are set to 1
-                                   
- 002082 2 RW : Address of the tiles graphics in memory. Must be 8 bytes aligned
-
- 002085 1 RW : Vertical scroll (in pixels)
-
- 00208A 1 RW : Refresh related ? (bit 4 = not vsync?)
-
- 0020FE 1 RW : External Hardware Register Command
- 0020FF 1 RW : External Hardware Register Data
-               - To write to an external hardware register, write the command
-                 address to 20FE, then write as many data as you want to 
-                 address 20FF
-               - It seems the GC emu only supports command $81, but hardware
-                 has a lot of other commands to change display                          
-              
-EXTERNAL REGISTERS (see hardware registers 20FE and 20FF)
-------------------
-  81 : LCD Contrast
-       - Command followed by 1 byte data between 0 and $3f, normal value = $1f,
-         00 = white on white, $3f = black on black
-                        
+ See: http://wiki.sublab.net/index.php/PM_Registers
      
 ------------------------------------------------------------------------------
  INSTRUCTION SET
 ------------------------------------------------------------------------------
 
+ See: http://wiki.sublab.net/index.php/PM_InstructionList
+
 for instruction enocoding: 
   rb:   A = 0          rw:   BA = 0                                        
         B = 1                HL = 1
-        L = 2                X1 = 2
-        H = 3                X2 = 3
+        L = 2                X  = 2
+        H = 3                Y  = 3
 
 - Flags are changed by arithmetic and logic operations only
 - To calculate the branch targets, assume the PC points to the next instruction
   (the one following the current instruction)
-- For NN addressing, the specified 8 bit offset (ofs8) is unsigned unlike other 
+- For N addressing, the specified 8 bit offset (ofs8) is unsigned unlike other 
   8 bits offsets which are signed
 
  +----------------------+------------------------+----------------------------+----+
- | addb A,A             | 00                     |  A <- A + A                |SOCZ|
+ | add A,A              | 00                     |  A <- A + A                |SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | addb A,B             | 01                     |  A <- A + B                |SOCZ|
+ | add A,B              | 01                     |  A <- A + B                |SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | addb A,imm8          | 02:imm8                |  A <- A + imm8             |SOCZ|
+ | add A,imm8           | 02:imm8                |  A <- A + imm8             |SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | addb A,[HL]          | 03                     |  A <- A + mem8[HL]         |SOCZ|
+ | add A,[HL]           | 03                     |  A <- A + mem8[I<<16+HL]   |SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | addb A,[NN+ofs8]     | 04:ofs8                |  A <- A +                  |SOCZ|
- |                      |                        | mem8[HL[23:16]<<16+NN+ofs8]|    |
+ | add A,[N+ofs8]       | 04:ofs8                |  A <- A +                  |SOCZ|
+ |                      |                        |  mem8[I<<16+N<<8+ofs8]     |    |
  +----------------------+------------------------+----------------------------+----+
- | addb A,[ofs16]       | 05:ofs16L:ofs16H       |  A <- A +                  |SOCZ|
- |                      |                        | mem8[HL[23:16]<<16+ofs16]  |    |
+ | add A,[ofs16]        | 05:ofs16L:ofs16H       |  A <- A + mem8[I<<16+ofs16]|SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | addb A,[X1]          | 06                     |  A <- A + mem8[X1]         |SOCZ|
+ | add A,[X]            | 06                     |  A <- A + mem8[XI<<16+X]   |SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | addb A,[X2]          | 07                     |  A <- A + mem8[X2]         |SOCZ|
+ | add A,[Y]            | 07                     |  A <- A + mem8[YI<<16+X]   |SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | addcb A,A            | 08                     |  A <- A + A + CF           |SOCZ|
+ | adc A,A              | 08                     |  A <- A + A + CF           |SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | addcb A,B            | 09                     |  A <- A + B + CF           |SOCZ|
+ | adc A,B              | 09                     |  A <- A + B + CF           |SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | addcb A,imm8         | 0A:imm8                |  A <- A + imm8 + CF        |SOCZ|
+ | adc A,imm8           | 0A:imm8                |  A <- A + imm8 + CF        |SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | addcb A,[HL]         | 0B                     |  A <- A + mem8[HL] + CF    |SOCZ|
+ | adc A,[HL]           | 0B                     |  A <- A + CF +             |SOCZ|
+ |                      |                        |   mem8[I<<16+HL]           |    |
  +----------------------+------------------------+----------------------------+----+
- | addcb A,[NN+ofs8]    | 0C:ofs8                |  A <- A + CF +             |SOCZ|
- |                      |                        | mem8[HL[23:16]<<16+NN+ofs8]|    |
+ | adc A,[N+ofs8]       | 0C:ofs8                |  A <- A + CF +             |SOCZ|
+ |                      |                        |   mem8[I<<16+N<<8+ofs8]    |    |
  +----------------------+------------------------+----------------------------+----+
- | addcb A,[ofs16]      | 0D:ofs16L:ofs16H       |  A <- A + CF +             |SOCZ|
- |                      |                        | mem8[HL[23:16]<<16+ofs16]  |    |
+ | adc A,[ofs16]        | 0D:ofs16L:ofs16H       |  A <- A + CF +             |SOCZ|
+ |                      |                        |   mem8[I<<16+ofs16]        |    |
  +----------------------+------------------------+----------------------------+----+
- | addcb A,[X1]         | 0E                     |  A <- A + mem8[X1] + CF    |SOCZ|
+ | adc A,[X]            | 0E                     |  A <- A + CF +             |SOCZ|
+ |                      |                        |   mem8[XI<<16+X]           |    |
  +----------------------+------------------------+----------------------------+----+
- | addcb A,[X2]         | 0F                     |  A <- A + mem8[X2] + CF    |SOCZ|
+ | adc A,[Y]            | 0F                     |  A <- A + CF +             |SOCZ|
+ |                      |                        |   mem8[YI<<16+Y]           |    |
  +----------------------+------------------------+----------------------------+----+
- | subb A,A             | 10                     |  A <- A - A                |SOCZ|
+ | sub A,A              | 10                     |  A <- A - A                |SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | subb A,B             | 11                     |  A <- A - B                |SOCZ|
+ | sub A,B              | 11                     |  A <- A - B                |SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | subb A,imm8          | 12:imm8                |  A <- A - imm8             |SOCZ|
+ | sub A,imm8           | 12:imm8                |  A <- A - imm8             |SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | subb A,[HL]          | 13                     |  A <- A - mem8[HL]         |SOCZ|
+ | sub A,[HL]           | 13                     |  A <- A - mem8[I<<16+HL]   |SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | subb A,[NN+ofs8]     | 14:ofs8                |  A <- A -                  |SOCZ|
- |                      |                        | mem8[HL[23:16]<<16+NN+ofs8]|    |
+ | sub A,[N+ofs8]       | 14:ofs8                |  A <- A -                  |SOCZ|
+ |                      |                        |   mem8[I<<16+N<<8+ofs8]    |    |
  +----------------------+------------------------+----------------------------+----+
- | subb A,[ofs16]       | 15:ofs16L:ofs16H       |  A <- A -                  |SOCZ|
- |                      |                        | mem8[HL[23:16]<<16+ofs16]  |    |
+ | sub A,[ofs16]        | 15:ofs16L:ofs16H       |  A <- A - mem8[I<<16+ofs16]|SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | subb A,[X1]          | 16                     |  A <- A - mem8[X1]         |SOCZ|
+ | sub A,[X]            | 16                     |  A <- A - mem8[XI<<16+X]   |SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | subb A,[X2]          | 17                     |  A <- A - mem8[X2]         |SOCZ|
+ | sub A,[Y]            | 17                     |  A <- A - mem8[YI<<16+X]   |SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | subcb A,A            | 18                     |  A <- A - A - CF           |SOCZ|
+ | sbc A,A              | 18                     |  A <- A - A - CF           |SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | subcb A,B            | 19                     |  A <- A - B - CF           |SOCZ|
+ | sbc A,B              | 19                     |  A <- A - B - CF           |SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | subcb A,imm8         | 1A:imm8                |  A <- A - imm8 - CF        |SOCZ|
+ | sbc A,imm8           | 1A:imm8                |  A <- A - imm8 - CF        |SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | subcb A,[HL]         | 1B                     |  A <- A - mem8[HL] - CF    |SOCZ|
+ | sbc A,[HL]           | 1B                     |  A <- A - CF -             |SOCZ|
+ |                      |                        |   mem8[I<<16+HL]           |    |
  +----------------------+------------------------+----------------------------+----+
- | subcb A,[NN+ofs8]    | 1C:ofs8                |  A <- A - CF -             |SOCZ|
- |                      |                        | mem8[HL[23:16]<<16+NN+ofs8]|    |
+ | sbc A,[N+ofs8]       | 1C:ofs8                |  A <- A - CF -             |SOCZ|
+ |                      |                        |   mem8[I<<16+N<<8+ofs8]    |    |
  +----------------------+------------------------+----------------------------+----+
- | subcb A,[ofs16]      | 1D:ofs16L:ofs16H       |  A <- A - CF -             |SOCZ|
- |                      |                        | mem8[HL[23:16]<<16+ofs16]  |    |
+ | sbc A,[ofs16]        | 1D:ofs16L:ofs16H       |  A <- A - CF -             |SOCZ|
+ |                      |                        |   mem8[I<<16+ofs16]        |    |
  +----------------------+------------------------+----------------------------+----+
- | subcb A,[X1]         | 1E                     |  A <- A - mem8[X1] - CF    |SOCZ|
+ | sbc A,[X]            | 1E                     |  A <- A - CF -             |SOCZ|
+ |                      |                        |   mem8[XI<<16+X]           |    |
  +----------------------+------------------------+----------------------------+----+
- | subcb A,[X2]         | 1F                     |  A <- A - mem8[X2] - CF    |SOCZ|
+ | sbc A,[Y]            | 1F                     |  A <- A - CF -             |SOCZ|
+ |                      |                        |   mem8[YI<<16+Y]           |    |
  +----------------------+------------------------+----------------------------+----+
- | andb A,A             | 20                     |  A <- A and A              |    |
+ | and A,A              | 20                     |  A <- A and A              |S  Z|
  +----------------------+------------------------+----------------------------+----+
- | andb A,B             | 21                     |  A <- A and B              |    |
+ | and A,B              | 21                     |  A <- A and B              |S  Z|
  +----------------------+------------------------+----------------------------+----+
- | andb A,imm8          | 22:imm8                |  A <- A and imm8           |    |
+ | and A,imm8           | 22:imm8                |  A <- A and imm8           |S  Z|
  +----------------------+------------------------+----------------------------+----+
- | andb A,[HL]          | 23                     |  A <- A and mem8[HL]       |    |
+ | and A,[HL]           | 23                     |  A <- A and mem8[I<<16+HL] |S  Z|
  +----------------------+------------------------+----------------------------+----+
- | andb A,[NN+ofs8]     | 24:ofs8                |  A <- A and                |    |
- |                      |                        | mem8[HL[23:16]<<16+NN+ofs8]|    |
+ | and A,[N+ofs8]       | 24:ofs8                |  A <- A and                |S  Z|
+ |                      |                        |   mem8[I<<16+N<<8+ofs8]    |    |
  +----------------------+------------------------+----------------------------+----+
- | andb A,[ofs16]       | 25:ofs16L:ofs16H       |  A <- A and                |    |
- |                      |                        |  mem8[HL[23:16]<<16+ofs16] |    |
+ | and A,[ofs16]        | 25:ofs16L:ofs16H       |  A <- A and                |S  Z|
+ |                      |                        |   mem8[I<<16+ofs16]        |    |
  +----------------------+------------------------+----------------------------+----+
- | andb A,[X1]          | 26                     |  A <- A and mem8[X1]       |    |
+ | and A,[X]            | 26                     |  A <- A and mem8[XI<<16+X] |S  Z|
  +----------------------+------------------------+----------------------------+----+
- | andb A,[X2]          | 27                     |  A <- A and mem8[X2]       |    |
+ | and A,[Y]            | 27                     |  A <- A and mem8[YI<<16+Y] |S  Z|
  +----------------------+------------------------+----------------------------+----+
- | orb A,A              | 28                     |  A <- A or A               |    |
+ | or A,A               | 28                     |  A <- A or A               |S  Z|
  +----------------------+------------------------+----------------------------+----+
- | orb A,B              | 29                     |  A <- A or B               |    |
+ | or A,B               | 29                     |  A <- A or B               |S  Z|
  +----------------------+------------------------+----------------------------+----+
- | orb A,imm8           | 2A:imm8                |  A <- A or imm8            |    |
+ | or A,imm8            | 2A:imm8                |  A <- A or imm8            |S  Z|
  +----------------------+------------------------+----------------------------+----+
- | orb A,[HL]           | 2B                     |  A <- A or mem8[HL]        |    |
+ | or A,[HL]            | 2B                     |  A <- A or mem8[I<<16+HL]  |S  Z|
  +----------------------+------------------------+----------------------------+----+
- | orb A,[NN+ofs8]      | 2C:ofs8                |  A <- A or                 |    |
- |                      |                        | mem8[HL[23:16]<<16+NN+ofs8]|    |
+ | or A,[N+ofs8]        | 2C:ofs8                |  A <- A or                 |S  Z|
+ |                      |                        |   mem8[I<<16+N<<8+ofs8]    |    |
  +----------------------+------------------------+----------------------------+----+
- | orb A,[ofs16]        | 2D:ofs16L:ofs16H       |  A <- A or                 |    |
- |                      |                        |  mem8[HL[23:16]<<16+ofs16] |    |
+ | or A,[ofs16]         | 2D:ofs16L:ofs16H       |  A <- A or                 |S  Z|
+ |                      |                        |   mem8[I<<16+ofs16]        |    |
  +----------------------+------------------------+----------------------------+----+
- | orb A,[X1]           | 2E                     |  A <- A or mem8[X1]        |    |
+ | or A,[X]             | 2E                     |  A <- A or mem8[XI<<16+X]  |S  Z|
  +----------------------+------------------------+----------------------------+----+
- | orb A,[X2]           | 2F                     |  A <- A or mem8[X2]        |    |
+ | or A,[Y]             | 2F                     |  A <- A or mem8[YI<<16+Y]  |S  Z|
  +----------------------+------------------------+----------------------------+----+
- | cmpb A,A             | 30                     |  change flag like if 0     |SOCZ|
+ | cmp A,A              | 30                     |  change flag like if 0     |SOCZ|
  |                      |                        | update flags but don't store    |
  +----------------------+------------------------+----------------------------+----+
- | cmpb A,B             | 31                     |  temp <- A - B             |SOCZ|
+ | cmp A,B              | 31                     |  temp <- A - B             |SOCZ|
  |                      |                        |update flags but don't store|    |
  +----------------------+------------------------+----------------------------+----+
- | cmpb A,imm8          | 32:imm8                |  temp <- A - imm8          |SOCZ|
+ | cmp A,imm8           | 32:imm8                |  temp <- A - imm8          |SOCZ|
  |                      |                        |update flags but don't store|    |
  +----------------------+------------------------+----------------------------+----+
- | cmpb A,[HL]          | 33                     |  temp <- A - mem8[HL]      |SOCZ|
+ | cmp A,[HL]           | 33                     |  temp <- A - mem8[I<<16+HL]|SOCZ|
  |                      |                        |update flags but don't store|    |
  +----------------------+------------------------+----------------------------+----+
- | cmpb A,[NN+ofs8]     | 34:ofs8                |  temp <- A -               |SOCZ|
- |                      |                        | mem8[HL[23:16]<<16+NN+ofs8]|    |
+ | cmp A,[N+ofs8]       | 34:ofs8                |  temp <- A -               |SOCZ|
+ |                      |                        |  mem8[I<<16+N<<8+ofs8]     |    |
  |                      |                        |update flags but don't store|    |
  +----------------------+------------------------+----------------------------+----+
- | cmpb A,[ofs16]       | 35:ofs16L:ofs16H       |  temp <- A -               |SOCZ|
- |                      |                        |  mem8[HL[23:16]<<16+ofs16] |    |
+ | cmp A,[ofs16]        | 35:ofs16L:ofs16H       |  temp <- A -               |SOCZ|
+ |                      |                        |  mem8[I<<16+ofs16]         |    |
  |                      |                        |update flags but don't store|    |
  +----------------------+------------------------+----------------------------+----+
- | cmpb A,[X1]          | 36                     |  temp <- A - mem8[X1]      |SOCZ|
+ | cmp A,[X]            | 36                     |  temp <- A - mem8[XI<<16+X]|SOCZ|
  |                      |                        |update flags but don't store|    |
  +----------------------+------------------------+----------------------------+----+
- | cmpb A,[X2]          | 37                     |  temp <- A - mem8[X2]      |SOCZ|
+ | cmp A,[Y]            | 37                     |  temp <- A - mem8[YI<<16+Y]|SOCZ|
  |                      |                        |update flags but don't store|    |
  +----------------------+------------------------+----------------------------+----+
- | xorb A,A             | 38                     |  A <- 0                    |    |
+ | xor A,A              | 38                     |  A <- 0                    |S  Z|
  +----------------------+------------------------+----------------------------+----+
- | xorb A,B             | 39                     |  A <- A xor B              |    |
+ | xor A,B              | 39                     |  A <- A xor B              |S  Z|
  +----------------------+------------------------+----------------------------+----+
- | xorb A,imm8          | 3A:imm8                |  A <- A xor imm8           |    |
+ | xor A,imm8           | 3A:imm8                |  A <- A xor imm8           |S  Z|
  +----------------------+------------------------+----------------------------+----+
- | xorb A,[HL]          | 3B                     |  A <- A xor mem8[HL]       |    |
+ | xor A,[HL]           | 3B                     |  A <- A xor mem8[I<<16+HL] |S  Z|
  +----------------------+------------------------+----------------------------+----+
- | xorb A,[NN+ofs8]     | 3C:ofs8                |  A <- A xor                |    |
- |                      |                        | mem8[HL[23:16]<<16+NN+ofs8]|    |
+ | xor A,[N+ofs8]       | 3C:ofs8                |  A <- A xor                |S  Z|
+ |                      |                        |   mem8[I<<16+N<<16+ofs8]   |    |
  +----------------------+------------------------+----------------------------+----+
- | xorb A,[ofs16]       | 3D:ofs16L:ofs16H       |  A <- A xor                |    |
- |                      |                        |  mem8[HL[23:16]<<16+ofs16] |    |
+ | xor A,[ofs16]        | 3D:ofs16L:ofs16H       |  A <- A xor                |S  Z|
+ |                      |                        |   mem8[I<<16+ofs16]        |    |
  +----------------------+------------------------+----------------------------+----+
- | xorb A,[X1]          | 3E                     |  A <- A xor mem8[X1]       |    |
+ | xor A,[X]            | 3E                     |  A <- A xor mem8[XI<<16+X] |S  Z|
  +----------------------+------------------------+----------------------------+----+
- | xorb A,[X2]          | 3F                     |  A <- A xor mem8[X2]       |    |
+ | xor A,[Y]            | 3F                     |  A <- A xor mem8[YI<<16+Y] |S  Z|
  +----------------------+------------------------+----------------------------+----+
- | movb rb1,rb2         | 40+rb1<<3+rb2          |  rb1 <- rb2                | -  |
+ | mov rb1,rb2          | 40+rb1<<3+rb2          |  rb1 <- rb2                | -  |
  +----------------------+------------------------+----------------------------+----+
- | movb rb,[NN+ofs8]    | 44+rb<<3:ofs8          |  rb <-                     | -  |
- |                      |                        | mem8[HL[23:16]<<16+NN+ofs8]|    |
+ | mov rb,[N+ofs8]      | 44+rb<<3:ofs8          |  rb <-                     | -  |
+ |                      |                        |   mem8[I<<16+N<<8+ofs8]    |    |
  +----------------------+------------------------+----------------------------+----+
- | movb rb,[HL]         | 45+rb<<3               |  rb <- mem8[HL]            | -  |
+ | mov rb,[HL]          | 45+rb<<3               |  rb <- mem8[I<<16+HL]      | -  |
  +----------------------+------------------------+----------------------------+----+
- | movb rb,[X1]         | 46+rb<<3               |  rb <- mem8[X1]            | -  |
+ | mov rb,[X]           | 46+rb<<3               |  rb <- mem8[XI<<16+X]      | -  |
  +----------------------+------------------------+----------------------------+----+
- | movb rb,[X2]         | 47+rb<<3               |  rb <- mem8[X2]            | -  |
+ | mov rb,[Y]           | 47+rb<<3               |  rb <- mem8[YI<<16+Y]      | -  |
  +----------------------+------------------------+----------------------------+----+
- | movb [X1],rb         | 60+rb                  |  mem8[X1] <- rb            | -  |
+ | mov [X],rb           | 60+rb                  |  mem8[XI<<16+X] <- rb      | -  |
  +----------------------+------------------------+----------------------------+----+
- | movb [X1],[NN+ofs8]  | 64:ofs8                |  mem8[X1] <-               | -  |
- |                      |                        | mem8[HL[23:16]<<16+NN+ofs8]|    |
+ | mov [X],[N+ofs8]     | 64:ofs8                |  mem8[XI<<16+X] <-         | -  |
+ |                      |                        |   mem8[I<<16+N<<8+ofs8]    |    |
  +----------------------+------------------------+----------------------------+----+
- | movb [X1],[HL]       | 65                     |  mem8[X1] <- mem8[HL]      | -  |
+ | mov [X],[HL]         | 65                     |  mem8[XI<<16+X] <-         | -  |
+ |                      |                        |   mem8[I<<16+HL]           |    |
  +----------------------+------------------------+----------------------------+----+
- | movb [X1],[X1]       | 66                     |  mem8[X1] <- mem8[X1]      | -  |
+ | mov [X],[X]          | 66                     |  mem8[XI<<16+X] <-         | -  |
+ |                      |                        |   mem8[XI<<16+X]           |    |
  +----------------------+------------------------+----------------------------+----+
- | movb [X1],[X2]       | 67                     |  mem8[X1] <- mem8[X2]      | -  |
+ | mov [X],[Y]          | 67                     |  mem8[XI<<16+X] <-         | -  |
+ |                      |                        |   mem8[YI<<16+Y]           |    |
  +----------------------+------------------------+----------------------------+----+
- | movb [HL],rb         | 68+rb                  |  mem8[HL] <- rb            | -  |
+ | mov [HL],rb          | 68+rb                  |  mem8[I<<16+HL] <- rb      | -  |
  +----------------------+------------------------+----------------------------+----+
- | movb [HL],[NN+ofs8]  | 6C:ofs8                |  mem8[HL] <-               | -  |
- |                      |                        | mem8[HL[23:16]<<16+NN+ofs8]|    |
+ | mov [HL],[N+ofs8]    | 6C:ofs8                |  mem8[I<<16+HL] <-         | -  |
+ |                      |                        |   mem8[I<<16+N<<8+ofs8]    |    |
  +----------------------+------------------------+----------------------------+----+
- | movb [HL],[HL]       | 6D                     |  mem8[HL] <- mem8[HL]      | -  |
+ | mov [HL],[HL]        | 6D                     |  mem8[I<<16+HL] <-         | -  |
+ |                      |                        |   mem8[I<<16+HL]           |    |
  +----------------------+------------------------+----------------------------+----+
- | movb [HL],[X1]       | 6E                     |  mem8[HL] <- mem8[X1]      | -  |
+ | mov [HL],[X]         | 6E                     |  mem8[I<<16+HL] <-         | -  |
+ |                      |                        |   mem8[XI<<16+X]           |    |
  +----------------------+------------------------+----------------------------+----+
- | movb [HL],[X2]       | 6F                     |  mem8[HL] <- mem8[X2]      | -  |
+ | mov [HL],[Y]         | 6F                     |  mem8[I<<16+HL] <-         | -  |
+ |                      |                        |   mem8[YI<<16+Y]           |    |
  +----------------------+------------------------+----------------------------+----+
- | movb [X2],rb         | 70+rb                  |  mem8[X2] <- rb            | -  |
+ | mov [Y],rb           | 70+rb                  |  mem8[YI<<16+Y] <- rb      | -  |
  +----------------------+------------------------+----------------------------+----+
- | movb [X2],[NN+ofs8]  | 74:ofs8                |  mem8[X2] <-               | -  |
- |                      |                        | mem8[HL[23:16]<<16+NN+ofs8]|    |
+ | mov [Y],[N+ofs8]     | 74:ofs8                |  mem8[YI<<16+Y] <-         | -  |
+ |                      |                        |   mem8[I<<16+N<<8+ofs8]    |    |
  +----------------------+------------------------+----------------------------+----+
- | movb [X2],[HL]       | 75                     |  mem8[X2] <- mem8[HL]      | -  |
+ | mov [Y],[HL]         | 75                     |  mem8[YI<<16+Y] <-         | -  |
+ |                      |                        |   mem8[I<<16+HL]           |    |
  +----------------------+------------------------+----------------------------+----+
- | movb [X2],[X1]       | 76                     |  mem8[X2] <- mem8[X1]      | -  |
+ | mov [Y],[X]          | 76                     |  mem8[YI<<16+Y] <-         | -  |
+ |                      |                        |   mem8[XI<<16+X]           |    |
  +----------------------+------------------------+----------------------------+----+
- | movb [X2],[X2]       | 77                     |  mem8[X2] <- mem8[X2]      | -  |
+ | mov [Y],[Y]          | 77                     |  mem8[YI<<16+Y] <-         | -  |
+ |                      |                        |   mem8[YI<<16+Y]           |    |
  +----------------------+------------------------+----------------------------+----+
- | movb [NN+ofs8],rb    | 78+rb:ofs8             | mem8[HL[23:16]<<16+NN+ofs8]| -  |
- |                      |                        |    <- rb                   |    |
+ | mov [N+ofs8],rb      | 78+rb:ofs8             |  mem8[I<<16+N<<8+ofs8]     | -  |
+ |                      |                        |   <- rb                    |    |
  +----------------------+------------------------+----------------------------+----+
- | movb [NN+ofs8],[HL]  | 7D:ofs8                | mem8[HL[23:16]<<16+NN+ofs8]| -  |
- |                      |                        |    <- mem8[HL]             |    |
+ | mov [N+ofs8],[HL]    | 7D:ofs8                |  mem8[I<<16+N<<8+ofs8]     | -  |
+ |                      |                        |   <- mem8[HL]              |    |
  +----------------------+------------------------+----------------------------+----+
- | movb [NN+ofs8],[X1]  | 7E:ofs8                | mem8[HL[23:16]<<16+NN+ofs8]| -  |
- |                      |                        |    <- mem8[X1]             |    |
+ | mov [N+ofs8],[X]     | 7E:ofs8                |  mem8[I<<16+N<<8+ofs8]     | -  |
+ |                      |                        |   <- mem8[X]               |    |
  +----------------------+------------------------+----------------------------+----+
- | movb [NN+ofs8],[X2]  | 7F:ofs8                | mem8[HL[23:16]<<16+NN+ofs8]| -  |
- |                      |                        |    <- mem8[X2]             |    |
+ | mov [N+ofs8],[Y]     | 7F:ofs8                |  mem8[I<<16+N<<8+ofs8]     | -  |
+ |                      |                        |   <- mem8[Y]               |    |
  +----------------------+------------------------+----------------------------+----+
- | incb rb              | 80+rb                  |  rb <- rb + 1              |    |
+ | inc rb               | 80+rb                  |  rb <- rb + 1              |   Z|
  +----------------------+------------------------+----------------------------+----+
- | incb N               | 84                     |  NN <- NN + 0x100          |    |
+ | inc N                | 84                     |  N <- N + 1                |   Z|
  +----------------------+------------------------+----------------------------+----+
- | incb [NN+ofs8]       | 85:ofs8                | ar <- HL[23:16]<<16+NN+ofs8|    |
- |                      |                        | mem8[ar] <- mem8[ar] + 1   |    |
+ | inc [N+ofs8]         | 85:ofs8                |  mem8[I<<16+N<<8+ofs8] <-  |   Z|
+ |                      |                        |   mem8[I<<16+N<<8+ofs8] + 1|    |
  +----------------------+------------------------+----------------------------+----+
- | incb [HL]            | 86                     |  mem8[HL] <- mem8[HL] + 1  |    |
+ | inc [HL]             | 86                     |  mem8[I<<16+HL] <-         |   Z|
+ |                      |                        |   mem8[I<<16+HL] + 1        |    |
  +----------------------+------------------------+----------------------------+----+
- | incw SP              | 87                     |  SP <- SP + 1              |    |
+ | inc SP               | 87                     |  SP <- SP + 1              |   Z|
  +----------------------+------------------------+----------------------------+----+
- | decb rb              | 88+rb                  |  rb <- rb - 1              |    |
+ | dec rb               | 88+rb                  |  rb <- rb - 1              |   Z|
  +----------------------+------------------------+----------------------------+----+
- | decb N               | 8C                     |  NN <- NN - 0x100          |    |
+ | dec N                | 8C                     |  N <- N - 1                |   Z|
  +----------------------+------------------------+----------------------------+----+
- | decb [NN+ofs8]       | 8D:ofs8                | ar <- HL[23:16]<<16+NN+ofs8|    |
- |                      |                        | mem8[ar] <- mem8[ar] - 1   |    |
+ | dec [N+ofs8]         | 8D:ofs8                |  mem8[I<<16+N<<8+ofs8] <-  |   Z|
+ |                      |                        |   mem8[I<<16+N<<8+ofs8] - 1|    |
  +----------------------+------------------------+----------------------------+----+
- | decb [HL]            | 8E                     |  mem8[HL] <- mem8[HL] - 1  |    |
+ | dec [HL]             | 8E                     |  mem8[I<<16+HL] <-         |   Z|
+ |                      |                        |   mem8[I<<16+HL] - 1       |    |
  +----------------------+------------------------+----------------------------+----+
- | decw SP              | 8F                     |  SP <- SP - 1              |    |
+ | dec SP               | 8F                     |  SP <- SP - 1              |   Z|
  +----------------------+------------------------+----------------------------+----+
- | incw rw              | 90+rw                  |  rw <- rw + 1              |    |
+ | inc rw               | 90+rw                  |  rw <- rw + 1              |   Z|
  +----------------------+------------------------+----------------------------+----+
- | testb A,B            | 94                     |  temp <- A and B           |    |
+ | tst A,B              | 94                     |  temp <- A and B           |S  Z|
  |                      |                        |update flags but don't store|    |
  +----------------------+------------------------+----------------------------+----+
- | testb [HL],imm8      | 95:imm8                |  temp <- mem8[HL] and imm8 |    |
+ | tst [HL],imm8        | 95:imm8                |  temp <- mem8[I<<16+HL]    |S  Z|
+ |                      |                        |   and imm8                 |    |
  |                      |                        |update flags but don't store|    |
  +----------------------+------------------------+----------------------------+----+
- | testb A,imm8         | 96:imm8                |  temp <- A and imm8        |    |
+ | tst A,imm8           | 96:imm8                |  temp <- A and imm8        |S  Z|
  |                      |                        |update flags but don't store|    |
  +----------------------+------------------------+----------------------------+----+
- | testb B,imm8         | 97:imm8                |  temp <- B and imm8        |    |
+ | tst B,imm8           | 97:imm8                |  temp <- B and imm8        |S  Z|
  |                      |                        |update flags but don't store|    |
  +----------------------+------------------------+----------------------------+----+
- | decw rw              | 98+rw                  |  rw <- rw - 1              |    |
+ | dec rw               | 98+rw                  |  rw <- rw - 1              |   Z|
  +----------------------+------------------------+----------------------------+----+
- | andb FLAGS,imm8      | 9C:imm8                |  FLAGS <- FLAGS and imm8   |    |
+ | and F,imm8           | 9C:imm8                |  F <- F and imm8           |SoCZ|
  +----------------------+------------------------+----------------------------+----+
- | orb FLAGS,imm8       | 9D:imm8                |  FLAGS <- FLAGS or imm8    |    |
+ | or F,imm8            | 9D:imm8                |  F <- F or imm8            |SoCZ|
  +----------------------+------------------------+----------------------------+----+
- | xorb FLAGS,imm8      | 9E:imm8                |  FLAGS <- FLAGS xor imm8   |    |
+ | xor F,imm8           | 9E:imm8                |  F <- F xor imm8           |SoCZ|
  +----------------------+------------------------+----------------------------+----+
- | movb FLAGS,imm8      | 9F:imm8                |  FLAGS <- imm8             |SOCZ|
+ | mov F,imm8           | 9F:imm8                |  F <- imm8                 |socz|
  +----------------------+------------------------+----------------------------+----+
- | pushw rw             | A0+rw                  |  SP <- SP - 2              | -  |
+ | push rw              | A0+rw                  |  SP <- SP - 2              | -  |
  |                      |                        |  mem8[SP] <- (rwLOW)       |    |
  |                      |                        |  mem8[SP+1] <- (rwHIGH)    |    |
  +----------------------+------------------------+----------------------------+----+
- | pushb N              | A4                     |  SP <- SP - 1              | -  |
- |                      |                        |  mem8[SP] <- NN[15:8]      |    |
+ | push N               | A4                     |  SP <- SP - 1              | -  |
+ |                      |                        |  mem8[SP] <- N             |    |
  +----------------------+------------------------+----------------------------+----+
- | pushx HL             | A5                     |  SP <- SP - 1              | -  |
- |                      |                        |  mem8[SP] <- H[23:16]      |    |
+ | push I               | A5                     |  SP <- SP - 1              | -  |
+ |                      |                        |  mem8[SP] <- I             |    |
  +----------------------+------------------------+----------------------------+----+
- | pushxxx              | A6                     |  SP <- SP - 2              | -  |
- |                      |                        |  mem8[SP] <- X2[23:16]     |    |
- |                      |                        |  mem8[SP+1] <- X1[23:16]   |    |
+ | pushx                | A6                     |  SP <- SP - 2              | -  |
+ |                      |                        |  mem8[SP] <- XI            |    |
+ |                      |                        |  mem8[SP+1] <- YI          |    |
  +----------------------+------------------------+----------------------------+----+
- | pushb FLAGS          | A7                     |  SP <- SP - 1              | -  |
- |                      |                        |  mem8[SP] <- FLAGS         |    |
+ | push F               | A7                     |  SP <- SP - 1              | -  |
+ |                      |                        |  mem8[SP] <- F             |    |
  +----------------------+------------------------+----------------------------+----+
- | popw rw              | A8+rw                  |  rwLOW <- mem[SP]          | -  |
+ | pop rw               | A8+rw                  |  rwLOW <- mem[SP]          | -  |
  |                      |                        |  rwHIGH <- mem[SP+1]       |    |
  |                      |                        |  SP <- SP + 2              |    |
  +----------------------+------------------------+----------------------------+----+
- | popb N               | AC                     |  NN[15:8] <- mem[SP]       | -  |
+ | pop N                | AC                     |  N <- mem[SP]              | -  |
  |                      |                        |  SP <- SP + 1              |    |
  +----------------------+------------------------+----------------------------+----+
- | popx HL              | AD                     |  HL[23:16] <- mem[SP]      | -  |
+ | pop I                | AD                     |  N <- mem[SP]              | -  |
  |                      |                        |  SP <- SP + 1              |    |
  +----------------------+------------------------+----------------------------+----+
- | popxxx               | AE                     |  X2[23:16] <- mem[SP]      | -  |
- |                      |                        |  X1[23:16] <- mem[SP+1]    |    |
+ | popx                 | AE                     |  XI <- mem[SP]             | -  |
+ |                      |                        |  YI <- mem[SP+1]           |    |
  |                      |                        |  SP <- SP + 2              |    |
  +----------------------+------------------------+----------------------------+----+
- | popb FLAGS           | AF                     |  FLAGS <- mem[SP]          |SOCZ|
+ | pop F                | AF                     |  F <- mem[SP]              |socz|
  |                      |                        |  SP <- SP + 1              |    |
  +----------------------+------------------------+----------------------------+----+
- | movb rb,imm8         | B0+rb:imm8             |  rb <- imm8                | -  |
+ | mov rb,imm8          | B0+rb:imm8             |  rb <- imm8                | -  |
  +----------------------+------------------------+----------------------------+----+
- | movw NN,imm16        | B4:imm16H              |  NN <- imm16 and 0xFF00    | -  |
+ | mov N,imm8           | B4:imm8                |  N <- imm8                 | -  |
  +----------------------+------------------------+----------------------------+----+
- | movb [HL],imm8       | B5:imm8                |  mem8[HL] <- imm8          | -  |
+ | mov [HL],imm8        | B5:imm8                |  mem8[I<<16+HL] <- imm8    | -  |
  +----------------------+------------------------+----------------------------+----+
- | movb [X1],imm8       | B6:imm8                |  mem8[X1] <- imm8          | -  |
+ | mov [X],imm8         | B6:imm8                |  mem8[XI<<16+X] <- imm8    | -  |
  +----------------------+------------------------+----------------------------+----+
- | movb [X2],imm8       | B7:imm8                |  mem8[X2] <- imm8          | -  |
+ | mov [Y],imm8         | B7:imm8                |  mem8[YI<<16+Y] <- imm8    | -  |
  +----------------------+------------------------+----------------------------+----+
- | movw rw,[ofs16]      | B8+rw:ofs16L:ofs16H    |  rw <-                     | -  |
- |                      |                        | mem8[HL[23:16]<<16+ofs16]  |    |
+ | mov rw,[ofs16]       | B8+rw:ofs16L:ofs16H    |  rw <- mem8[I<<16+ofs16]   | -  |
  +----------------------+------------------------+----------------------------+----+
- | movw [ofs16],rw      | BC+rw:ofs16L:ofs16H    | mem8[HL[23:16]<<16+ofs16]  | -  |
- |                      |                        |    <- rw                   |    |
+ | mov [ofs16],rw       | BC+rw:ofs16L:ofs16H    |  mem8[I<<16+ofs16] <- rw   | -  |
  +----------------------+------------------------+----------------------------+----+
- | addw rw,imm16        | C0+rw:imm16L:imm16H    |  rw <- rw + imm16          |SOCZ|
+ | add rw,imm16         | C0+rw:imm16L:imm16H    |  rw <- rw + imm16          |SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | movw rw,imm16        | C4+rw:imm16L:imm16H    |  rw <- imm16               | -  |
+ | mov rw,imm16         | C4+rw:imm16L:imm16H    |  rw <- imm16               | -  |
  +----------------------+------------------------+----------------------------+----+
- | xchgw BA,HL          | C8                     |  temp <- BA                |    |
+ | xchg BA,HL           | C8                     |  temp <- BA                |    |
  |                      |                        |  BA <- HL                  |    |
  |                      |                        |  HL <- temp                |    |
  +----------------------+------------------------+----------------------------+----+
- | xchgw BA,X1          | C9                     |  temp <- BA                |    |
- |                      |                        |  BA <- X1                  |    |
- |                      |                        |  X1 <- temp                |    |
+ | xchg BA,X            | C9                     |  temp <- BA                |    |
+ |                      |                        |  BA <- X                   |    |
+ |                      |                        |  X <- temp                 |    |
  +----------------------+------------------------+----------------------------+----+
- | xchgw BA,X2          | CA                     |  temp <- BA                |    |
- |                      |                        |  BA <- X2                  |    |
- |                      |                        |  X1 <- temp                |    |
+ | xchg BA,Y            | CA                     |  temp <- BA                |    |
+ |                      |                        |  BA <- Y                   |    |
+ |                      |                        |  Y <- temp                 |    |
  +----------------------+------------------------+----------------------------+----+
- | xchgw BA,SP          | CB                     |  temp <- SP                |    |
+ | xchg BA,SP           | CB                     |  temp <- SP                |    |
  |                      |                        |  SP <- BA                  |    |
  |                      |                        |  BA <- temp                |    |
  +----------------------+------------------------+----------------------------+----+
- | xchgb A,B            | CC                     |  temp <- A                 |    |
+ | xchg A,B             | CC                     |  temp <- A                 |    |
  |                      |                        |  A <- B                    |    |
  |                      |                        |  B <- temp                 |    |
  +----------------------+------------------------+----------------------------+----+
- | xchgb A,[HL]         | CD                     |  temp <- A                 |    |
- |                      |                        |  A <- [HL]                 |    |
- |                      |                        |  [HL] <- temp              |    |
+ | xchg A,[HL]          | CD                     |  temp <- A                 |    |
+ |                      |                        |  A <- [I<<16+HL]           |    |
+ |                      |                        |  [I<<16+HL] <- temp        |    |
  +----------------------+------------------------+----------------------------+----+
- | subw rw,imm16        | D0+rw:imm16L:imm16H    |  rw <- rw - imm16          |SOCZ|
+ | sub rw,imm16         | D0+rw:imm16L:imm16H    |  rw <- rw - imm16          |SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | cmpw rw,imm16        | D4+rw:imm16L:imm16H    |  temp <- rw-imm16          |    |
+ | cmp rw,imm16         | D4+rw:imm16L:imm16H    |  temp <- rw - imm16        |SOCZ|
  |                      |                        |update flags but don't store|    |
  +----------------------+------------------------+----------------------------+----+
- | andb [NN+ofs8],imm8  | D8:ofs8:imm8           | ar <- HL[23:16]<<16+NN+ofs8|    | 
- |                      |                        |mem8[ar]<- mem8[ar] and imm8|    |
+ | and [N+ofs8],imm8    | D8:ofs8:imm8           |  mem8[I<<16+N<<8+ofs8] <-  |S  Z|
+ |                      |                        |   mem8[I<<16+N<<8+ofs8]    |    |
+ |                      |                        |   and imm8                 |    |
  +----------------------+------------------------+----------------------------+----+
- | orb [NN+ofs8],imm8   | D9:ofs8:imm8           | ar <- HL[23:16]<<16+NN+ofs8|    | 
- |                      |                        | mem8[ar]<- mem8[ar] or imm8|    |
+ | or [N+ofs8],imm8     | D9:ofs8:imm8           |  mem8[I<<16+N<<8+ofs8] <-  |S  Z|
+ |                      |                        |   mem8[I<<16+N<<8+ofs8]    |    |
+ |                      |                        |   or imm8                  |    |
  +----------------------+------------------------+----------------------------+----+
- | xorb [NN+ofs8],imm8  | DA:ofs8:imm8           | ar <- HL[23:16]<<16+NN+ofs8|    | 
- |                      |                        |mem8[ar]<- mem8[ar] xor imm8|    |
+ | xor [N+ofs8],imm8    | DA:ofs8:imm8           |  mem8[I<<16+N<<8+ofs8] <-  |S  Z|
+ |                      |                        |   mem8[I<<16+N<<8+ofs8]    |    |
+ |                      |                        |   xor imm8                 |    |
  +----------------------+------------------------+----------------------------+----+
- | cmpb [NN+ofs8],imm8  | DB:ofs8:imm8           | ar <- HL[23:16]<<16+NN+ofs8|SOCZ| 
- |                      |                        | temp<- mem8[ar] - imm8     |    |
+ | cmp [N+ofs8],imm8    | DB:ofs8:imm8           |  temp <-                   |S  Z|
+ |                      |                        |   mem8[I<<16+N<<8+ofs8]    |    |
+ |                      |                        |   - imm8                   |    |
  |                      |                        |update flags but don't store|    |
  +----------------------+------------------------+----------------------------+----+
- | testb [NN+ofs8],imm8 | DC:ofs8:imm8           | ar <- HL[23:16]<<16+NN+ofs8|    | 
- |                      |                        | temp <- mem8[ar] and imm8  |    |
+ | tst [N+ofs8],imm8    | DC:ofs8:imm8           |  temp <-                   |S  Z|
+ |                      |                        |  mem8[I<<16+N<<8+ofs8]     |    |
+ |                      |                        |   and imm8                 |    |
  |                      |                        |update flags but don't store|    |
  +----------------------+------------------------+----------------------------+----+
- | movb [NN+ofs8],imm8  | DD:ofs8:imm8           | ar <- HL[23:16]<<16+NN+ofs8| -  | 
+ | mov [N+ofs8],imm8    | DD:ofs8:imm8           | ar <- HL[23:16]<<16+NN+ofs8| -  | 
  |                      |                        | mem8[ar]<- imm8            |    |
  +----------------------+------------------------+----------------------------+----+
- | bcde                 | DE                     |  A <- (A and 0xF) or (B<<4)|    |
- |                      |                        | (BCD encode)               |    |
+ | pack                 | DE                     |  A <- (A and 0xF) or (B<<4)| -  |
  +----------------------+------------------------+----------------------------+----+
- | bcdd                 | DF                     |  A <- A and 0xF            |    |
- |                      |                        | B <- (A >> 8) (arith shift)|    |
- |                      |                        | (BCD decode)               |    |
+ | unpack               | DF                     |  B <- (A >> 8)             | -  |
+ |                      |                        |  A <- (A and 0xF)          |    |
  +----------------------+------------------------+----------------------------+----+
- | callcb disp8         | E0:disp8               |  if CF = 1 then            | -  |
+ | callc disp8          | E0:disp8               |  if CF = 1 then            | -  |
  |                      |                        |       SP <- SP - 3         |    |
-%|                      |                        |       mem16[SP] <- PC      |    |
-%|                      |                        |       mem8[SP+2] <- V      |    |
-%|                      |                        |       V <- U               |    |
+ |                      |                        |       mem16[SP] <- PC      |    |
+ |                      |                        |       mem8[SP+2] <- V      |    |
+ |                      |                        |       V <- U               |    |
  |                      |                        |       PC <- PC + disp8 - 1 |    |
  +----------------------+------------------------+----------------------------+----+
- | callncb disp8        | E1:disp8               |  if CF = 0 then            | -  |
+ | callnc disp8         | E1:disp8               |  if CF = 0 then            | -  |
  |                      |                        |       SP <- SP - 3         |    |
-%|                      |                        |       mem16[SP] <- PC      |    |
-%|                      |                        |       mem8[SP+2] <- V      |    |
-%|                      |                        |       V <- U               |    |
+ |                      |                        |       mem16[SP] <- PC      |    |
+ |                      |                        |       mem8[SP+2] <- V      |    |
+ |                      |                        |       V <- U               |    |
  |                      |                        |       PC <- PC + disp8 - 1 |    |
  +----------------------+------------------------+----------------------------+----+
- | callzb disp8         | E2:disp8               |  if ZF = 1 then            | -  |
+ | callz disp8          | E2:disp8               |  if ZF = 1 then            | -  |
  |                      |                        |       SP <- SP - 3         |    |
-%|                      |                        |       mem16[SP] <- PC      |    |
-%|                      |                        |       mem8[SP+2] <- V      |    |
-%|                      |                        |       V <- U               |    |
+ |                      |                        |       mem16[SP] <- PC      |    |
+ |                      |                        |       mem8[SP+2] <- V      |    |
+ |                      |                        |       V <- U               |    |
  |                      |                        |       PC <- PC + disp8 - 1 |    |
  +----------------------+------------------------+----------------------------+----+
- | callnzb disp8        | E3:disp8               |  if ZF = 0 then            | -  |
+ | callnz disp8         | E3:disp8               |  if ZF = 0 then            | -  |
  |                      |                        |       SP <- SP - 3         |    |
-%|                      |                        |       mem16[SP] <- PC      |    |
-%|                      |                        |       mem8[SP+2] <- V      |    |
-%|                      |                        |       V <- U               |    |
+ |                      |                        |       mem16[SP] <- PC      |    |
+ |                      |                        |       mem8[SP+2] <- V      |    |
+ |                      |                        |       V <- U               |    |
  |                      |                        |       PC <- PC + disp8 - 1 |    |
  +----------------------+------------------------+----------------------------+----+
- | jcb disp8            | E4:disp8               |  if CF = 1 then            |    |
-%|                      |                        |       V <- U               |    |
+ | jc disp8             | E4:disp8               |  if CF = 1 then            | -  |
+ |                      |                        |       V <- U               |    |
  |                      |                        |       PC <- PC + disp8 - 1 |    |
  +----------------------+------------------------+----------------------------+----+
- | jncb disp8           | E5:disp8               |  if CF = 0 then            |    |
-%|                      |                        |       V <- U               |    |
+ | jnc disp8            | E5:disp8               |  if CF = 0 then            | -  |
+ |                      |                        |       V <- U               |    |
  |                      |                        |       PC <- PC + disp8 - 1 |    |
  +----------------------+------------------------+----------------------------+----+
- | jzb disp8            | E6:disp8               |  if ZF = 1 then            |    |
-%|                      |                        |       V <- U               |    |
+ | jz disp8             | E6:disp8               |  if ZF = 1 then            | -  |
+ |                      |                        |       V <- U               |    |
  |                      |                        |       PC <- PC + disp8 - 1 |    |
  +----------------------+------------------------+----------------------------+----+
- | jnzb disp8           | E7:disp8               |  if ZF = 0 then            |    |
-%|                      |                        |       V <- U               |    |
+ | jnz disp8            | E7:disp8               |  if ZF = 0 then            | -  |
+ |                      |                        |       V <- U               |    |
  |                      |                        |       PC <- PC + disp8 - 1 |    |
  +----------------------+------------------------+----------------------------+----+
  | callcw disp16        | E8:disp16L:disp16H     |  if CF = 1 then            | -  |
  |                      |                        |       SP <- SP - 3         |    |
-%|                      |                        |       mem16[SP] <- PC      |    |
-%|                      |                        |       mem8[SP+2] <- V      |    |
-%|                      |                        |       V <- U               |    |
+ |                      |                        |       mem16[SP] <- PC      |    |
+ |                      |                        |       mem8[SP+2] <- V      |    |
+ |                      |                        |       V <- U               |    |
  |                      |                        |       PC <- PC + disp16 - 1|    |
  +----------------------+------------------------+----------------------------+----+
  | callncw disp16       | E9:disp16L:disp16H     |  if CF = 0 then            | -  |
  |                      |                        |       SP <- SP - 3         |    |
-%|                      |                        |       mem16[SP] <- PC      |    |
-%|                      |                        |       mem8[SP+2] <- V      |    |
-%|                      |                        |       V <- U               |    |
+ |                      |                        |       mem16[SP] <- PC      |    |
+ |                      |                        |       mem8[SP+2] <- V      |    |
+ |                      |                        |       V <- U               |    |
  |                      |                        |       PC <- PC + disp16 - 1|    |
  +----------------------+------------------------+----------------------------+----+
  | callzw disp16        | EA:disp16L:disp16H     |  if ZF = 1 then            | -  |
  |                      |                        |       SP <- SP - 3         |    |
-%|                      |                        |       mem16[SP] <- PC      |    |
-%|                      |                        |       mem8[SP+2] <- V      |    |
-%|                      |                        |       V <- U               |    |
+ |                      |                        |       mem16[SP] <- PC      |    |
+ |                      |                        |       mem8[SP+2] <- V      |    |
+ |                      |                        |       V <- U               |    |
  |                      |                        |       PC <- PC + disp16 - 1|    |
  +----------------------+------------------------+----------------------------+----+
  | callnzw disp16       | EB:disp16L:disp16H     |  if ZF = 0 then            | -  |
  |                      |                        |       SP <- SP - 3         |    |
-%|                      |                        |       mem16[SP] <- PC      |    |
-%|                      |                        |       mem8[SP+2] <- V      |    |
-%|                      |                        |       V <- U               |    |
+ |                      |                        |       mem16[SP] <- PC      |    |
+ |                      |                        |       mem8[SP+2] <- V      |    |
+ |                      |                        |       V <- U               |    |
  |                      |                        |       PC <- PC + disp16 - 1|    |
  +----------------------+------------------------+----------------------------+----+
  | jcw disp16           | EC:disp16L:disp16H     |  if CF = 1 then            | -  |
-%|                      |                        |       V <- U               |    |
+ |                      |                        |       V <- U               |    |
  |                      |                        |       PC <- PC + disp16 - 1|    |
  +----------------------+------------------------+----------------------------+----+
  | jncw disp16          | ED:disp16L:disp16H     |  if CF = 0 then            | -  |
-%|                      |                        |       V <- U               |    |
+ |                      |                        |       V <- U               |    |
  |                      |                        |       PC <- PC + disp16 - 1|    |
  +----------------------+------------------------+----------------------------+----+
  | jzw disp16           | EE:disp16L:disp16H     |  if ZF = 1 then            | -  |
-%|                      |                        |       V <- U               |    |
+ |                      |                        |       V <- U               |    |
  |                      |                        |       PC <- PC + disp16 - 1|    |
  +----------------------+------------------------+----------------------------+----+
  | jnzw disp16          | EF:disp16L:disp16H     |  if ZF = 0 then            | -  |
-%|                      |                        |       V <- U               |    |
+ |                      |                        |       V <- U               |    |
  |                      |                        |       PC <- PC + disp16 - 1|    |
  +----------------------+------------------------+----------------------------+----+
- | callb disp8          | F0:disp8               |  SP <- SP - 3              | -  |
-%|                      |                        |  mem16[SP] <- PC           |    |
-%|                      |                        |  mem8[SP+2] <- V           |    |
-%|                      |                        |  V <- U                    |    |
+ | call disp8           | F0:disp8               |  SP <- SP - 3              | -  |
+ |                      |                        |  mem16[SP] <- PC           |    |
+ |                      |                        |  mem8[SP+2] <- V           |    |
+ |                      |                        |  V <- U                    |    |
  |                      |                        |  PC <- PC + disp8 - 1      |    |
  +----------------------+------------------------+----------------------------+----+
- | jmpb disp8           | F1:disp8               |  PC <- PC + disp8 - 1      | -  |
-%|                      |                        | V <- U                     |    |
+ | jmp disp8            | F1:disp8               |  PC <- PC + disp8 - 1      | -  |
+ |                      |                        |  V <- U                    |    |
  +----------------------+------------------------+----------------------------+----+
  | callw disp16         | F2:disp16L:disp16H     |  SP <- SP - 3              | -  |
  |                      |                        |  mem16[SP] <- PC           |    |
-%|                      |                        |  mem8[SP+2] <- V           |    |
-%|                      |                        |  V <- U                    |    |
+ |                      |                        |  mem8[SP+2] <- V           |    |
+ |                      |                        |  V <- U                    |    |
  |                      |                        |  PC <- PC + disp16 - 1     |    |
  +----------------------+------------------------+----------------------------+----+
  | jmpw disp16          | F3:disp16L:disp16H     |  PC <- PC + disp16 - 1     | -  |
-%|                      |                        |  V <- U                    |    |
+ |                      |                        |  V <- U                    |    |
  +----------------------+------------------------+----------------------------+----+
- | jmpw HL              | F4                     |  PC <- HL                  | -  |
-%|                      |                        |  V <- U                    |    |
+ | jmp HL               | F4                     |  PC <- HL                  | -  |
+ |                      |                        |  V <- U                    |    |
  +----------------------+------------------------+----------------------------+----+
- | jdbnz disp8          | F5:disp8               |  B <- B - 1                |    |
-%|                      |                        | if B<>0 then               |    | 
-%|                      |                        |     V <- U                 |    |
-%|                      |                        |     PC <- PC + disp8 - 1   |    |
+ | jdbnz disp8          | F5:disp8               |  B <- B - 1                |   Z|
+ |                      |                        |  if B <> 0 then            |    | 
+ |                      |                        |     V <- U                 |    |
+ |                      |                        |     PC <- PC + disp8 - 1   |    |
  +----------------------+------------------------+----------------------------+----+
- | bcdx A               | F6                     |  A <- (A >> 4) or (A << 4) |    |
- |                      |                        | (BCD xchg)                 |    |
+ | swap A               | F6                     |  A <- (A >> 4) or (A << 4) | -  |
  +----------------------+------------------------+----------------------------+----+
- | bcdx [HL]            | F7                     |  mem8[HL] (mem8[HL] >> 4)  |    |
- |                      |                        |     or mem8[HL]            |    |
- |                      |                        | (BCD xchg)                 |    |
+ | swap [HL]            | F7                     |  mem8[I<<16+HL] <-         | -  |
+ |                      |                        |   (mem8[HL] >> 4)          |    |
+ |                      |                        |   or mem8[HL]              |    |
  +----------------------+------------------------+----------------------------+----+
-%| ret                  | F8                     |  PC <- mem16[SP]           | -  |
-%|                      |                        |  V <- mem8[SP+2]           | -  |
+ | ret                  | F8                     |  PC <- mem16[SP]           | -  |
+ |                      |                        |  V <- mem8[SP+2]           |    |
  |                      |                        |  SP <- SP + 3              |    |
  +----------------------+------------------------+----------------------------+----+
- | reti                 | F9                     |  PC <- mem16[SP+1]         |SOCZ|
- |                      |                        |  FLAGS <- mem8[SP]         |    |
-%|                      |                        |  V <- mem8[SP+3]           | -  |
+ | reti                 | F9                     |  PC <- mem16[SP+1]         |socz|
+ |                      |                        |  F <- mem8[SP]             |    |
+ |                      |                        |  V <- mem8[SP+3]           |    |
  |                      |                        |  SP <- SP + 4              |    |
  +----------------------+------------------------+----------------------------+----+
-%| retskip              | FA                     |  PC <- mem16[SP] + 2       |SOCZ|
-%|                      |                        |  V <- mem8[SP+2]           |    |
-%|                      |                        |  SP <- SP + 3              |    |
+ | retskip              | FA                     |  PC <- mem16[SP] + 2       |    |
+ |                      |                        |  V <- mem8[SP+2]           |    |
+ |                      |                        |  SP <- SP + 3              |    |
  +----------------------+------------------------+----------------------------+----+
  | call [ofs16]         | FB:ofs16L:ofs16H       |  SP <- SP - 3              | -  |
-%|                      |                        |  mem16[SP] <- PC           |    |
-%|                      |                        |  mem8[SP+2] <- V           |    |
- |                      |                        |  ar <- HL[23:16]<<16+ofs16 |    |
- |                      |                        |  PC <- mem16[ar]           |    |
+ |                      |                        |  mem16[SP] <- PC           |    |
+ |                      |                        |  mem8[SP+2] <- V           |    |
+ |                      |                        |  PC <- mem16[I<<16+ofs16]  |    |
  +----------------------+------------------------+----------------------------+----+
- | int intNB            | FC:intNB<<1            |  SP <- SP - 4              | -  |
- |                      |                        |  mem8[SP] <- FLAGS         |    |
+ | cint intNB           | FC:intNB<<1            |  SP <- SP - 4              | -  |
+ |                      |                        |  mem8[SP] <- F             |    |
  |                      |                        |  mem16[SP+1] <- PC         |    |
-%|                      |                        |  mem16[SP+3] <- V          |    |
+ |                      |                        |  mem16[SP+3] <- V          |    |
+ |                      |                        |  F <- F or 0x40 (???)      |    |
  |                      |                        |  PC <- mem16[intNB<<1]     |    |
  +----------------------+------------------------+----------------------------+----+
  | jint intNB           | FD:intNB<<1            |  PC <- mem16[intNB<<1]     | -  |
-%|                      |                        |  V <- U                    |    |
+ |                      |                        |  V <- U (???)              |    |
+ |                      |                        |  F <- F or 0x40 (???)      |    |
  |                      |                        |  and something else        |    |
  |                      |                        |  (???)                     |    |
  +----------------------+------------------------+----------------------------+----+
@@ -741,612 +649,696 @@ for instruction enocoding:
 EXTENDED 0
 
  +----------------------+------------------------+----------------------------+----+
- | addb A,[X1+ofs8]     | CE:00:ofs8             |  A <- A + mem8[X1+ofs8]    |SOCZ|
+ | add A,[X+ofs8]       | CE:00:ofs8             |  A <- A +                  |SOCZ|
+ |                      |                        |   mem8[XI<<16+X+ofs8]      |    |
  +----------------------+------------------------+----------------------------+----+
- | addb A,[X2+ofs8]     | CE:01:ofs8             |  A <- A + mem8[X2+ofs8]    |SOCZ|
+ | add A,[Y+ofs8]       | CE:01:ofs8             |  A <- A +                  |SOCZ|
+ |                      |                        |   mem8[YI<<16+Y+ofs8]      |    |
  +----------------------+------------------------+----------------------------+----+
- | addb A,[X1+L]        | CE:02                  |  A <- A + mem8[X1+L]       |SOCZ|
+ | add A,[X+L]          | CE:02                  |  A <- A +                  |SOCZ|
+ |                      |                        |   mem8[XI<<16+X+L]         |    |
  +----------------------+------------------------+----------------------------+----+
- | addb A,[X2+L]        | CE:03                  |  A <- A + mem8[X2+L]       |SOCZ|
+ | add A,[Y+L]          | CE:03                  |  A <- A +                  |SOCZ|
+ |                      |                        |   mem8[YI<<16+Y+L]         |    |
  +----------------------+------------------------+----------------------------+----+
- | addb [HL],A          | CE:04                  |  mem8[HL] <- mem8[HL] + A  |SOCZ|
+ | add [HL],A           | CE:04                  |  mem8[I<<16+HL] <-         |SOCZ|
+ |                      |                        |   mem8[I<<16+HL] + A       |    |
  +----------------------+------------------------+----------------------------+----+
- | addb [HL],imm8       | CE:05:imm8             |  mem8[HL] <- mem8[HL]+imm8 |SOCZ|
+ | add [HL],imm8        | CE:05:imm8             |  mem8[I<<16+HL] <-         |SOCZ|
+ |                      |                        |   mem8[I<<16+HL] + imm8    |    |
  +----------------------+------------------------+----------------------------+----+
- | addb [HL],[X1]       | CE:06                  | mem8[HL]<-mem8[HL]+mem8[X1]|SOCZ|
+ | add [HL],[X]         | CE:06                  |  mem8[I<<16+HL] <-         |SOCZ|
+ |                      |                        |   mem8[I<<16+HL] +         |    |
+ |                      |                        |   mem8[XI<<16+X1]          |    |
  +----------------------+------------------------+----------------------------+----+
- | addb [HL],[X2]       | CE:07                  | mem8[HL]<-mem8[HL]+mem8[X2]|SOCZ|
+ | add [HL],[Y]         | CE:07                  |  mem8[I<<16+HL] <-         |SOCZ|
+ |                      |                        |   mem8[I<<16+HL] +         |    |
+ |                      |                        |   mem8[YI<<16+Y1]          |    |
  +----------------------+------------------------+----------------------------+----+
- | addcb A,[X1+ofs8]    | CE:08:ofs8             |  A <- A + mem8[X1+ofs8]+CF |SOCZ|
+ | adc A,[X+ofs8]       | CE:08:ofs8             |  A <- A + CF +             |SOCZ|
+ |                      |                        |   mem8[XI<<16+X+ofs8]      |    |
  +----------------------+------------------------+----------------------------+----+
- | addcb A,[X2+ofs8]    | CE:09:ofs8             |  A <- A + mem8[X2+ofs8]+CF |SOCZ|
+ | adc A,[Y+ofs8]       | CE:09:ofs8             |  A <- A + CF +             |SOCZ|
+ |                      |                        |   mem8[YI<<16+Y+ofs8]      |    |
  +----------------------+------------------------+----------------------------+----+
- | addcb A,[X1+L]       | CE:0A                  |  A <- A + mem8[X1+L] + CF  |SOCZ|
+ | adc A,[X+L]          | CE:0A                  |  A <- A + CF +             |SOCZ|
+ |                      |                        |   mem8[XI<<16+X+L]         |    |
  +----------------------+------------------------+----------------------------+----+
- | addcb A,[X2+L]       | CE:0B                  |  A <- A + mem8[X2+L] + CF  |SOCZ|
+ | adc A,[Y+L]          | CE:0B                  |  A <- A + CF +             |SOCZ|
+ |                      |                        |   mem8[YI<<16+Y+L]         |    |
  +----------------------+------------------------+----------------------------+----+
- | addcb [HL],A         | CE:0C                  |  mem8[HL] <- mem8[HL] + A  |SOCZ|
- |                      |                        |              + CF          |    |
+ | adc [HL],A           | CE:0C                  |  mem8[I<<16+HL] <-         |SOCZ|
+ |                      |                        |   mem8[I<<16+HL] + A + CF  |    |
  +----------------------+------------------------+----------------------------+----+
- | addcb [HL],imm8      | CE:0D:imm8             |  mem8[HL] <- mem8[HL]+imm8 |SOCZ|
- |                      |                        |              + CF          |    |
+ | adc [HL],imm8        | CE:0D:imm8             |  mem8[I<<16+HL] <-         |SOCZ|
+ |                      |                        |  mem8[I<<16+HL] - imm8 - CF|    |
  +----------------------+------------------------+----------------------------+----+
- | addcb [HL],[X1]      | CE:0E                  |  mem8[HL]<- mem8[HL] +     |SOCZ|
- |                      |                        |             mem8[X1] + CF  |    |
+ | adc [HL],[X]         | CE:0E                  |  mem8[I<<16+HL] <-         |SOCZ|
+ |                      |                        |   mem8[I<<16+HL] +         |    |
+ |                      |                        |   mem8[XI<<16+X1] + CF     |    |
  +----------------------+------------------------+----------------------------+----+
- | addcb [HL],[X2]      | CE:0F                  |  mem8[HL]<- mem8[HL] +     |SOCZ|
- |                      |                        |             mem8[X2] + CF  |    |
+ | adc [HL],[Y]         | CE:0F                  |  mem8[I<<16+HL] <-         |SOCZ|
+ |                      |                        |   mem8[I<<16+HL] +         |    |
+ |                      |                        |   mem8[YI<<16+Y1] + CF     |    |
  +----------------------+------------------------+----------------------------+----+
- | subb A,[X1+ofs8]     | CE:10:ofs8             |  A <- A - mem8[X1+ofs8]    |SOCZ|
+ | sub A,[X+ofs8]       | CE:10:ofs8             |  A <- A -                  |SOCZ|
+ |                      |                        |   mem8[XI<<16+X+ofs8]      |    |
  +----------------------+------------------------+----------------------------+----+
- | subb A,[X2+ofs8]     | CE:11:ofs8             |  A <- A - mem8[X2+ofs8]    |SOCZ|
+ | sub A,[Y+ofs8]       | CE:11:ofs8             |  A <- A -                  |SOCZ|
+ |                      |                        |   mem8[YI<<16+Y+ofs8]      |    |
  +----------------------+------------------------+----------------------------+----+
- | subb A,[X1+L]        | CE:12                  |  A <- A - mem8[X1+L]       |SOCZ|
+ | sub A,[X+L]          | CE:12                  |  A <- A -                  |SOCZ|
+ |                      |                        |   mem8[XI<<16+X+L]         |    |
  +----------------------+------------------------+----------------------------+----+
- | subb A,[X2+L]        | CE:13                  |  A <- A - mem8[X2+L]       |SOCZ|
+ | sub A,[Y+L]          | CE:13                  |  A <- A -                  |SOCZ|
+ |                      |                        |   mem8[YI<<16+Y+L]         |    |
  +----------------------+------------------------+----------------------------+----+
- | subb [HL],A          | CE:14                  |  mem8[HL] <- mem8[HL] - A  |SOCZ|
+ | sub [HL],A           | CE:14                  |  mem8[I<<16+HL] <-         |SOCZ|
+ |                      |                        |   mem8[I<<16+HL] - A       |    |
  +----------------------+------------------------+----------------------------+----+
- | subb [HL],imm8       | CE:15:imm8             |  mem8[HL] <- mem8[HL]-imm8 |SOCZ|
+ | sub [HL],imm8        | CE:15:imm8             |  mem8[I<<16+HL] <-         |SOCZ|
+ |                      |                        |   mem8[I<<16+HL] - imm8    |    |
  +----------------------+------------------------+----------------------------+----+
- | subb [HL],[X1]       | CE:16                  | mem8[HL]<-mem8[HL]-mem8[X1]|SOCZ|
+ | sub [HL],[X]         | CE:16                  |  mem8[I<<16+HL] <-         |SOCZ|
+ |                      |                        |   mem8[I<<16+HL] -         |    |
+ |                      |                        |   mem8[XI<<16+X1]          |    |
  +----------------------+------------------------+----------------------------+----+
- | subb [HL],[X2]       | CE:17                  | mem8[HL]<-mem8[HL]-mem8[X2]|SOCZ|
+ | sub [HL],[Y]         | CE:17                  |  mem8[I<<16+HL] <-         |SOCZ|
+ |                      |                        |   mem8[I<<16+HL] -         |    |
+ |                      |                        |   mem8[YI<<16+Y1]          |    |
  +----------------------+------------------------+----------------------------+----+
- | subcb A,[X1+ofs8]    | CE:18:ofs8             |  A <- A - mem8[X1+ofs8]-CF |SOCZ|
+ | sbc A,[X+ofs8]       | CE:18:ofs8             |  A <- A - CF -             |SOCZ|
+ |                      |                        |   mem8[XI<<16+X+ofs8]      |    |
  +----------------------+------------------------+----------------------------+----+
- | subcb A,[X2+ofs8]    | CE:19:ofs8             |  A <- A - mem8[X2+ofs8]-CF |SOCZ|
+ | sbc A,[Y+ofs8]       | CE:19:ofs8             |  A <- A - CF -             |SOCZ|
+ |                      |                        |   mem8[YI<<16+Y+ofs8]      |    |
  +----------------------+------------------------+----------------------------+----+
- | subcb A,[X1+L]       | CE:1A                  |  A <- A - mem8[X1+L] - CF  |SOCZ|
+ | sbc A,[X+L]          | CE:1A                  |  A <- A - CF -             |SOCZ|
+ |                      |                        |   mem8[XI<<16+X+L]         |    |
  +----------------------+------------------------+----------------------------+----+
- | subcb A,[X2+L]       | CE:1B                  |  A <- A - mem8[X2+L] - CF  |SOCZ|
+ | sbc A,[Y+L]          | CE:1B                  |  A <- A - CF -             |SOCZ|
+ |                      |                        |   mem8[YI<<16+Y+L]         |    |
  +----------------------+------------------------+----------------------------+----+
- | subcb [HL],A         | CE:1C                  |  mem8[HL] <- mem8[HL] - A  |SOCZ|
- |                      |                        |              - CF          |    |
+ | sbc [HL],A           | CE:1C                  |  mem8[I<<16+HL] <-         |SOCZ|
+ |                      |                        |   mem8[I<<16+HL] - A - CF  |    |
  +----------------------+------------------------+----------------------------+----+
- | subcb [HL],imm8      | CE:1D:imm8             |  mem8[HL] <- mem8[HL]-imm8 |SOCZ|
- |                      |                        |              - CF          |    |
+ | sbc [HL],imm8        | CE:1D:imm8             |  mem8[I<<16+HL] <-         |SOCZ|
+ |                      |                        |  mem8[I<<16+HL] - imm8 - CF|    |
  +----------------------+------------------------+----------------------------+----+
- | subcb [HL],[X1]      | CE:1E                  |  mem8[HL]<- mem8[HL] -     |SOCZ|
- |                      |                        |             mem8[X1] - CF  |    |
+ | sbc [HL],[X]         | CE:1E                  |  mem8[I<<16+HL] <-         |SOCZ|
+ |                      |                        |   mem8[I<<16+HL] -         |    |
+ |                      |                        |   mem8[XI<<16+X1] - CF     |    |
  +----------------------+------------------------+----------------------------+----+
- | subcb [HL],[X2]      | CE:1F                  |  mem8[HL]<- mem8[HL] -     |SOCZ|
- |                      |                        |             mem8[X2] - CF  |    |
+ | sbc [HL],[Y]         | CE:1F                  |  mem8[I<<16+HL] <-         |SOCZ|
+ |                      |                        |   mem8[I<<16+HL] -         |    |
+ |                      |                        |   mem8[YI<<16+Y1] - CF     |    |
  +----------------------+------------------------+----------------------------+----+
- | andb A,[X1+ofs8]     | CE:20:ofs8             |  A <- A and mem8[X1+ofs8]  | SZ |
+ | and A,[X+ofs8]       | CE:20:ofs8             |  A <- A and                |S  Z|
+ |                      |                        |   mem8[XI<<16+X+ofs8]      |    |
  +----------------------+------------------------+----------------------------+----+
- | andb A,[X2+ofs8]     | CE:21:ofs8             |  A <- A and mem8[X2+ofs8]  | SZ |
+ | and A,[Y+ofs8]       | CE:21:ofs8             |  A <- A and                |S  Z|
+ |                      |                        |   mem8[YI<<16+Y+ofs8]      |    |
  +----------------------+------------------------+----------------------------+----+
- | andb A,[X1+L]        | CE:22                  |  A <- A and mem8[X1+L]     | SZ |
+ | and A,[X+L]          | CE:22                  |  A <- A and                |S  Z|
+ |                      |                        |   mem8[XI<<16+X+L]         |    |
  +----------------------+------------------------+----------------------------+----+
- | andb A,[X2+L]        | CE:23                  |  A <- A and mem8[X2+L]     | SZ |
+ | and A,[Y+L]          | CE:23                  |  A <- A and                |S  Z|
+ |                      |                        |   mem8[YI<<16+Y+L]         |    |
  +----------------------+------------------------+----------------------------+----+
- | andb [HL],A          | CE:24                  |  mem8[HL]<-mem8[HL] and A  | SZ |
+ | and [HL],A           | CE:24                  |  mem8[I<<16+HL] <-         |S  Z|
+ |                      |                        |   mem8[I<<16+HL] and A     |    |
  +----------------------+------------------------+----------------------------+----+
- | andb [HL],imm8       | CE:25:imm8             |  mem8[HL]<-mem8[HL] and    | SZ |
- |                      |                        |      imm8                  |    |
+ | and [HL],imm8        | CE:25:imm8             |  mem8[I<<16+HL] <-         |S  Z|
+ |                      |                        |   mem8[I<<16+HL] and imm8  |    |
  +----------------------+------------------------+----------------------------+----+
- | andb [HL],[X1]       | CE:26                  |  mem8[HL]<-mem8[HL] and    | SZ |
- |                      |                        |      mem8[X1]              |    |
+ | and [HL],[X]         | CE:26                  |  mem8[I<<16+HL] <-         |S  Z|
+ |                      |                        |   mem8[I<<16+HL] and       |    |
+ |                      |                        |   mem8[XI<<16+X]           |    |
  +----------------------+------------------------+----------------------------+----+
- | andb [HL],[X2]       | CE:27                  |  mem8[HL]<-mem8[HL] and    | SZ |
- |                      |                        |      mem8[X2]              |    |
+ | and [HL],[Y]         | CE:27                  |  mem8[I<<16+HL] <-         |S  Z|
+ |                      |                        |   mem8[I<<16+HL] and       |    |
+ |                      |                        |   mem8[YI<<16+Y]           |    |
  +----------------------+------------------------+----------------------------+----+
- | orb A,[X1+ofs8]      | CE:28:ofs8             |  A <- A or mem8[X1+ofs8]   | SZ |
+ | or A,[X+ofs8]        | CE:28:ofs8             |  A <- A or                 |S  Z|
+ |                      |                        |   mem8[XI<<16+X+ofs8]      |    |
  +----------------------+------------------------+----------------------------+----+
- | orb A,[X2+ofs8]      | CE:29:ofs8             |  A <- A or mem8[X2+ofs8]   | SZ |
+ | or A,[Y+ofs8]        | CE:29:ofs8             |  A <- A or                 |S  Z|
+ |                      |                        |   mem8[YI<<16+Y+ofs8]      |    |
  +----------------------+------------------------+----------------------------+----+
- | orb A,[X1+L]         | CE:2A                  |  A <- A or mem8[X1+L]      | SZ |
+ | or A,[X+L]           | CE:2A                  |  A <- A or                 |S  Z|
+ |                      |                        |   mem8[XI<<16+X+L]         |    |
  +----------------------+------------------------+----------------------------+----+
- | orb A,[X2+L]         | CE:2B                  |  A <- A or mem8[X2+L]      | SZ |
+ | or A,[Y+L]           | CE:2B                  |  A <- A or                 |S  Z|
+ |                      |                        |   mem8[YI<<16+Y+L]         |    |
  +----------------------+------------------------+----------------------------+----+
- | orb [HL],A           | CE:2C                  |  mem8[HL]<-mem8[HL] or  A  | SZ |
+ | or [HL],A            | CE:2C                  |  mem8[I<<16+HL] <-         |S  Z|
+ |                      |                        |   mem8[I<<16+HL] or A      |    |
  +----------------------+------------------------+----------------------------+----+
- | orb [HL],imm8        | CE:2D:imm8             |  mem8[HL]<-mem8[HL] or     | SZ |
- |                      |                        |      imm8                  |    |
+ | or [HL],imm8         | CE:2D:imm8             |  mem8[I<<16+HL] <-         |S  Z|
+ |                      |                        |   mem8[I<<16+HL] or imm8   |    |
  +----------------------+------------------------+----------------------------+----+
- | orb [HL],[X1]        | CE:2E                  |  mem8[HL]<-mem8[HL] or  A  | SZ |
- |                      |                        |      mem8[X1]              |    |
+ | or [HL],[X]          | CE:2E                  |  mem8[I<<16+HL] <-         |S  Z|
+ |                      |                        |   mem8[I<<16+HL] or        |    |
+ |                      |                        |   mem8[XI<<16+X]           |    |
  +----------------------+------------------------+----------------------------+----+
- | orb [HL],[X2]        | CE:2F                  |  mem8[HL]<-mem8[HL] or  A  | SZ |
- |                      |                        |      mem8[X2]              |    |
+ | or [HL],[Y]          | CE:2F                  |  mem8[I<<16+HL] <-         |S  Z|
+ |                      |                        |   mem8[I<<16+HL] or        |    |
+ |                      |                        |   mem8[YI<<16+Y]           |    |
  +----------------------+------------------------+----------------------------+----+
- | cmpb A,[X1+ofs8]     | CE:30:ofs8             |  temp <- A - mem8[X1+ofs8] |SOCZ|
+ | cmp A,[X+ofs8]       | CE:30:ofs8             |  temp <- A -               |SOCZ|
+ |                      |                        |   mem8[XI<<16+X+ofs8]      |    |
  |                      |                        |update flags but don't store|    |
  +----------------------+------------------------+----------------------------+----+
- | cmpb A,[X2+ofs8]     | CE:31:ofs8             |  temp <- A - mem8[X2+ofs8] |SOCZ|
+ | cmp A,[Y+ofs8]       | CE:31:ofs8             |  temp <- A -               |SOCZ|
+ |                      |                        |   mem8[YI<<16+Y+ofs8]      |    |
  |                      |                        |update flags but don't store|    |
  +----------------------+------------------------+----------------------------+----+
- | cmpb A,[X1+L]        | CE:32                  |  temp <- A - mem8[X1+L]    |SOCZ|
+ | cmp A,[X+L]          | CE:32                  |  temp <- A -               |SOCZ|
+ |                      |                        |   mem8[XI<<16+X+L]         |    |
  |                      |                        |update flags but don't store|    |
  +----------------------+------------------------+----------------------------+----+
- | cmpb A,[X2+L]        | CE:33                  |  temp <- A - mem8[X2+L]    |SOCZ|
+ | cmp A,[Y+L]          | CE:33                  |  temp <- A -               |SOCZ|
+ |                      |                        |   mem8[YI<<16+Y+L]         |    |
  |                      |                        |update flags but don't store|    |
  +----------------------+------------------------+----------------------------+----+
- | cmpb [HL],A          | CE:34                  |  temp <- mem8[HL] - A      |SOCZ|
+ | cmp [HL],A           | CE:34                  |  temp <- mem8[I<<16+HL] - A|SOCZ|
  |                      |                        |update flags but don't store|    |
  +----------------------+------------------------+----------------------------+----+
- | cmpb [HL],imm8       | CE:35:imm8             |  temp <- mem8[HL]-imm8     |SOCZ|
+ | cmp [HL],imm8        | CE:35:imm8             |  temp <-mem8[I<<16+HL]-imm8|SOCZ|
  |                      |                        |update flags but don't store|    |
  +----------------------+------------------------+----------------------------+----+
- | cmpb [HL],[X1]       | CE:36                  |  temp <-mem8[HL]-mem8[X1]  |SOCZ|
+ | cmp [HL],[X]         | CE:36                  |  temp <-mem8[I<<16+HL] -   |SOCZ|
+ |                      |                        |   mem8[XI<<16+X]           |    |
  |                      |                        |update flags but don't store|    |
  +----------------------+------------------------+----------------------------+----+
- | cmpb [HL],[X2]       | CE:37                  |  temp <-mem8[HL]-mem8[X2]  |SOCZ|
+ | cmp [HL],[Y]         | CE:37                  |  temp <-mem8[I<<16+HL] -   |SOCZ|
+ |                      |                        |   mem8[YI<<16+Y]           |    |
  |                      |                        |update flags but don't store|    |
  +----------------------+------------------------+----------------------------+----+
- | xorb A,[X1+ofs8]     | CE:38:ofs8             |  A <- A or mem8[X1+ofs8]   | SZ |
+ | xor A,[X+ofs8]       | CE:38:ofs8             |  A <- A xor                |S  Z|
+ |                      |                        |   mem8[XI<<16+X+ofs8]      |    |
  +----------------------+------------------------+----------------------------+----+
- | xorb A,[X2+ofs8]     | CE:39:ofs8             |  A <- A or mem8[X2+ofs8]   | SZ |
+ | xor A,[Y+ofs8]       | CE:39:ofs8             |  A <- A xor                |S  Z|
+ |                      |                        |   mem8[YI<<16+Y+ofs8]      |    |
  +----------------------+------------------------+----------------------------+----+
- | xorb A,[X1+L]        | CE:3A                  |  A <- A or mem8[X1+L]      | SZ |
+ | xor A,[X+L]          | CE:3A                  |  A <- A xor                |S  Z|
+ |                      |                        |   mem8[XI<<16+X+L]         |    |
  +----------------------+------------------------+----------------------------+----+
- | xorb A,[X2+L]        | CE:3B                  |  A <- A or mem8[X2+L]      | SZ |
+ | xor A,[Y+L]          | CE:3B                  |  A <- A xor                |S  Z|
+ |                      |                        |   mem8[YI<<16+Y+L]         |    |
  +----------------------+------------------------+----------------------------+----+
- | xorb [HL],A          | CE:3C                  |  mem8[HL]<-mem8[HL] xor A  | SZ |
+ | xor [HL],A           | CE:3C                  |  mem8[I<<16+HL] <-         |S  Z|
+ |                      |                        |   mem8[I<<16+HL] xor A     |    |
  +----------------------+------------------------+----------------------------+----+
- | xorb [HL],imm8       | CE:3D:imm8             |  mem8[HL]<-mem8[HL] xor    | SZ |
- |                      |                        |      imm8                  |    |
+ | xor [HL],imm8        | CE:3D:imm8             |  mem8[I<<16+HL] <-         |S  Z|
+ |                      |                        |   mem8[I<<16+HL] xor imm8  |    |
  +----------------------+------------------------+----------------------------+----+
- | xorb [HL],[X1]       | CE:3E                  |  mem8[HL]<-mem8[HL] xor A  | SZ |
- |                      |                        |      mem8[X1]              |    |
+ | xor [HL],[X]         | CE:3E                  |  mem8[I<<16+HL] <-         |S  Z|
+ |                      |                        |   mem8[I<<16+HL] xor       |    |
+ |                      |                        |   mem8[XI<<16+X]           |    |
  +----------------------+------------------------+----------------------------+----+
- | xorb [HL],[X2]       | CE:3F                  |  mem8[HL]<-mem8[HL] xor A  | SZ |
- |                      |                        |      mem8[X2]              |    |
+ | xor [HL],[Y]         | CE:3F                  |  mem8[I<<16+HL] <-         |S  Z|
+ |                      |                        |   mem8[I<<16+HL] xor       |    |
+ |                      |                        |   mem8[YI<<16+Y]           |    |
  +----------------------+------------------------+----------------------------+----+
- | movb rb,[X1+ofs8]    | CE:40+rb<<3:ofs8       |  rb <- mem8[X1+ofs8]       | -  |
+ | mov rb,[X+ofs8]      | CE:40+rb<<3:ofs8       |  rb <- mem8[XI<<16+X+ofs8] | -  |
  +----------------------+------------------------+----------------------------+----+
- | movb rb,[X2+ofs8]    | CE:41+rb<<3:ofs8       |  rb <- mem8[X2+ofs8]       | -  |
+ | mov rb,[Y+ofs8]      | CE:41+rb<<3:ofs8       |  rb <- mem8[YI<<16+Y+ofs8] | -  |
  +----------------------+------------------------+----------------------------+----+
- | movb rb,[X1+L]       | CE:42+rb<<3            |  rb <- mem8[X1+L]          | -  |
+ | mov rb,[X+L]         | CE:42+rb<<3            |  rb <- mem8[XI<<16+X+L]    | -  |
  +----------------------+------------------------+----------------------------+----+
- | movb rb,[X2+L]       | CE:43+rb<<3            |  rb <- mem8[X2+L]          | -  |
+ | mov rb,[Y+L]         | CE:43+rb<<3            |  rb <- mem8[YI<<16+Y+L]    | -  |
  +----------------------+------------------------+----------------------------+----+
- | movb [X1+ofs8],rb    | CE:44+rb<<3:ofs8       |  mem8[X1+ofs8] <- rb       | -  |
+ | mov [X+ofs8],rb      | CE:44+rb<<3:ofs8       |  mem8[XI<<16+X+ofs8] <- rb | -  |
  +----------------------+------------------------+----------------------------+----+
- | movb [X2+ofs8],rb    | CE:45+rb<<3:ofs8       |  mem8[X2+ofs8] <- rb       | -  |
+ | mov [Y+ofs8],rb      | CE:45+rb<<3:ofs8       |  mem8[YI<<16+Y+ofs8] <- rb | -  |
  +----------------------+------------------------+----------------------------+----+
- | movb [X1+L],rb       | CE:46+rb<<3            |  mem8[X1+L] <- rb          | -  |
+ | mov [X+L],rb         | CE:46+rb<<3            |  mem8[XI<<16+X+L] <- rb    | -  |
  +----------------------+------------------------+----------------------------+----+
- | movb [X2+L],rb       | CE:47+rb<<3            |  mem8[X2+L] <- rb          | -  |
+ | mov [Y+L],rb         | CE:47+rb<<3            |  mem8[YI<<16+Y+L] <- rb    | -  |
  +----------------------+------------------------+----------------------------+----+
- | movb [HL],[X1+ofs8]  | CE:60:ofs8             |  mem8[HL] <- mem8[X1+ofs8] | -  |
+ | mov [HL],[X+ofs8]    | CE:60:ofs8             |  mem8[I<<16+HL] <-         | -  |
+ |                      |                        |   mem8[XI<<16+X+ofs8]      |    |
  +----------------------+------------------------+----------------------------+----+
- | movb [HL],[X2+ofs8]  | CE:61:ofs8             |  mem8[HL] <- mem8[X2+ofs8] | -  |
+ | mov [HL],[Y+ofs8]    | CE:61:ofs8             |  mem8[I<<16+HL] <-         | -  |
+ |                      |                        |   mem8[YI<<16+Y+ofs8]      |    |
  +----------------------+------------------------+----------------------------+----+
- | movb [HL],[X1+L]     | CE:62                  |  mem8[HL] <- mem8[X1+L]    | -  |
+ | mov [HL],[X+L]       | CE:62                  |  mem8[I<<16+HL] <-         | -  |
+ |                      |                        |   mem8[XI<<16+X+L]         |    |
  +----------------------+------------------------+----------------------------+----+
- | movb [HL],[X2+L]     | CE:63                  |  mem8[HL] <- mem8[X2+L]    | -  |
+ | mov [HL],[Y+L]       | CE:63                  |  mem8[I<<16+HL] <-         | -  |
+ |                      |                        |   mem8[YI<<16+Y+L]         |    |
  +----------------------+------------------------+----------------------------+----+
- | movb [X1],[X1+ofs8]  | CE:68:ofs8             |  mem8[X1] <- mem8[X1+ofs8] | -  |
+ | mov [X],[X+ofs8]     | CE:68:ofs8             |  mem8[XI<<16+X] <-         | -  |
+ |                      |                        |   mem8[XI<<16+X+ofs8]      |    |
  +----------------------+------------------------+----------------------------+----+
- | movb [X1],[X2+ofs8]  | CE:69:ofs8             |  mem8[X1] <- mem8[X2+ofs8] | -  |
+ | mov [X],[Y+ofs8]     | CE:69:ofs8             |  mem8[XI<<16+X] <-         | -  |
+ |                      |                        |   mem8[YI<<16+Y+ofs8]      |    |
  +----------------------+------------------------+----------------------------+----+
- | movb [X1],[X1+L]     | CE:6A                  |  mem8[X1] <- mem8[X1+L]    | -  |
+ | mov [X],[X+L]        | CE:6A                  |  mem8[XI<<16+X] <-         | -  |
+ |                      |                        |   mem8[XI<<16+X+L]         |    |
  +----------------------+------------------------+----------------------------+----+
- | movb [X1],[X2+L]     | CE:6B                  |  mem8[X1] <- mem8[X2+L]    | -  |
+ | mov [X],[Y+L]        | CE:6B                  |  mem8[XI<<16+X] <-         | -  |
+ |                      |                        |   mem8[YI<<16+Y+L]         |    |
  +----------------------+------------------------+----------------------------+----+
- | movb [X2],[X1+ofs8]  | CE:78:ofs8             |  mem8[X2] <- mem8[X1+ofs8] | -  |
+ | mov [Y],[X+ofs8]     | CE:78:ofs8             |  mem8[YI<<16+Y] <-         | -  |
+ |                      |                        |   mem8[XI<<16+X+ofs8]      |    |
  +----------------------+------------------------+----------------------------+----+
- | movb [X2],[X2+ofs8]  | CE:79:ofs8             |  mem8[X2] <- mem8[X2+ofs8] | -  |
+ | mov [Y],[Y+ofs8]     | CE:79:ofs8             |  mem8[YI<<16+Y] <-         | -  |
+ |                      |                        |   mem8[YI<<16+Y+ofs8]      |    |
  +----------------------+------------------------+----------------------------+----+
- | movb [X2],[X1+L]     | CE:7A                  |  mem8[X2] <- mem8[X1+L]    | -  |
+ | mov [Y],[X+L]        | CE:7A                  |  mem8[YI<<16+Y] <-         | -  |
+ |                      |                        |   mem8[XI<<16+X+L]         |    |
  +----------------------+------------------------+----------------------------+----+
- | movb [X2],[X2+L]     | CE:7B                  |  mem8[X2] <- mem8[X2+L]    | -  |
+ | mov [Y],[Y+L]        | CE:7B                  |  mem8[YI<<16+Y] <-         | -  |
+ |                      |                        |   mem8[YI<<16+Y+L]         |    |
  +----------------------+------------------------+----------------------------+----+
- | salb A               | CE:80                  |  A <- A << 1               |SOCZ|
+ | sal A                | CE:80                  |  A <- A << 1               |SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | salb B               | CE:81                  |  B <- B << 1               |SOCZ|
+ | sal B                | CE:81                  |  B <- B << 1               |SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | salb [NN+ofs8]       | CE:82:ofs8             | ar <- HL[23:16]<<16+NN+ofs8|SOCZ|
- |                      |                        |  mem8[ar] <- mem8[ar] << 1 |    |
+ | sal [N+ofs8]         | CE:82:ofs8             |  ar = I<<16 + N<<8 + ofs8  |SOCZ|
+ |                      |                        |   mem8[ar] <- mem8[ar] << 1|    |
  +----------------------+------------------------+----------------------------+----+
- | salb [HL]            | CE:83                  |  mem8[HL] <- mem8[HL] << 1 |SOCZ|
+ | sal [HL]             | CE:83                  |  ar = I<<16 + N<<8 + ofs8  |SOCZ|
+ |                      |                        |   mem8[ar] <- mem8[ar] << 1|    |
  +----------------------+------------------------+----------------------------+----+
- | shlb A               | CE:84                  |  A <- A << 1               | SCZ|
+ | shl A                | CE:84                  |  A <- A << 1               |S CZ|
  +----------------------+------------------------+----------------------------+----+
- | shlb B               | CE:85                  |  B <- B << 1               | SCZ|
+ | shl B                | CE:85                  |  B <- B << 1               |S CZ|
  +----------------------+------------------------+----------------------------+----+
- | shlb [NN+ofs8]       | CE:86:ofs8             | ar <- HL[23:16]<<16+NN+ofs8| SCZ|
- |                      |                        |  mem8[ar] <- mem8[ar] << 1 |    |
+ | shl [N+ofs8]         | CE:86:ofs8             |  ar = I<<16 + N<<8 + ofs8  |S CZ|
+ |                      |                        |   mem8[ar] <- mem8[ar] << 1|    |
  +----------------------+------------------------+----------------------------+----+
- | shlb [HL]            | CE:87                  |  mem8[HL] <- mem8[HL] << 1 | SCZ|
+ | shl [HL]             | CE:87                  |  ar = I<<16 + HL + ofs8    |S CZ|
+ |                      |                        |   mem8[ar] <- mem8[ar] << 1|    |
  +----------------------+------------------------+----------------------------+----+
- | sarb A               | CE:88                  | A <- A>>1 or (A and 0x80)) |SOCZ|
+ | sar A                | CE:88                  | A <- A>>1 or (A and 0x80)) |SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | sarb B               | CE:89                  | B <- B>>1 or (B and 0x80)) |SOCZ|
+ | sar B                | CE:89                  | B <- B>>1 or (B and 0x80)) |SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | sarb [NN+ofs8]       | CE:8A:ofs8             | ar <- HL[23:16]<<16+NN+ofs8|SOCZ|
- |                      |                        |  mem8[ar]<-mem8[ar]>>1 or  |    |
- |                      |                        |      (mem8[ar] and 0x80)   |    |
+ | sar [N+ofs8]         | CE:8A:ofs8             |  ar = I<<16 + N<<8 + ofs8  |SOCZ|
+ |                      |                        |   mem8[ar] <- mem8[ar] >> 1|    |
+ |                      |                        |   or (mem8[ar] and 0x80)   |    |
  +----------------------+------------------------+----------------------------+----+
- | sarb [HL]            | CE:8B                  | mem8[HL] <- mem8[HL]>>1 or |SOCZ|
- |                      |                        |      (mem8[HL] and 0x80)   |    |
+ | sar [HL]             | CE:8B                  |  ar = I<<16 + HL + ofs8    |SOCZ|
+ |                      |                        |   mem8[ar] <- mem8[ar] >> 1|    |
+ |                      |                        |   or (mem8[ar] and 0x80)   |    |
  +----------------------+------------------------+----------------------------+----+
- | shrb A               | CE:8C                  |  A <- A >> 1               | SCZ|
+ | shr A                | CE:8C                  |  A <- A >> 1               |S CZ|
  +----------------------+------------------------+----------------------------+----+
- | shrb B               | CE:8D                  |  B <- B >> 1               | SCZ|
+ | shr B                | CE:8D                  |  B <- B >> 1               |S CZ|
  +----------------------+------------------------+----------------------------+----+
- | shrb [NN+ofs8]       | CE:8E:ofs8             | ar <- HL[23:16]<<16+NN+ofs8| SCZ|
- |                      |                        |  mem8[ar] <- mem8[ar] >> 1 |    |
+ | shr [N+ofs8]         | CE:8E:ofs8             |  ar = I<<16 + N<<8 + ofs8  |S CZ|
+ |                      |                        |   mem8[ar] <- mem8[ar] >> 1|    |
  +----------------------+------------------------+----------------------------+----+
- | shrb [HL]            | CE:8F                  |  A <- A >> 1               | SCZ|
+ | shr [HL]             | CE:8F                  |  ar = I<<16 + HL + ofs8    |S CZ|
+ |                      |                        |   mem8[ar] <- mem8[ar] >> 1|    |
  +----------------------+------------------------+----------------------------+----+
- | rolcb A              | CE:90                  |  A <- A << 1 or CF         | SCZ|
+ | rolc A               | CE:90                  |  A <- A << 1 or CF         |S CZ|
  +----------------------+------------------------+----------------------------+----+
- | rolcb B              | CE:91                  |  B <- B << 1 or CF         | SCZ|
+ | rolc B               | CE:91                  |  B <- B << 1 or CF         |S CZ|
  +----------------------+------------------------+----------------------------+----+
- | rolcb [NN+ofs8]      | CE:92:ofs8             | ar <- HL[23:16]<<16+NN+ofs8| SCZ|
+ | rolc [N+ofs8]        | CE:92:ofs8             | ar <- I<<16 + N<<8 + ofs8  |S CZ|
  |                      |                        | mem8[ar]<-mem8[ar]<<1 or CF|    |
  +----------------------+------------------------+----------------------------+----+
- | rolcb [HL]           | CE:93                  | mem8[HL]<-mem8[HL]<<1 or CF| SCZ|
+ | rolc [HL]            | CE:93                  | ar <- I<<16 + N<<8 + ofs8  |S CZ|
+ |                      |                        | mem8[ar]<-mem8[ar]<<1 or CF|    |
  +----------------------+------------------------+----------------------------+----+
- | rolb A               | CE:94                  |  A <- A<<1 or (A>>7)       | SCZ|
+ | rol A                | CE:94                  |  A <- A<<1 or (A>>7)       |S CZ|
  +----------------------+------------------------+----------------------------+----+
- | rolb B               | CE:95                  |  B <- B<<1 or (B>>7)       | SCZ|
+ | rol B                | CE:95                  |  B <- B<<1 or (B>>7)       |S CZ|
  +----------------------+------------------------+----------------------------+----+
- | rolb [NN+ofs8]       | CE:96:ofs8             | ar <- HL[23:16]<<16+NN+ofs8| SCZ|
+ | rol [N+ofs8]         | CE:96:ofs8             | ar <- I<<16 + N<<8 + ofs8  |S CZ|
  |                      |                        |  mem8[ar] <- mem8[ar] << 1 |    |
  |                      |                        |       or mem8[ar] >> 7     |    |
  +----------------------+------------------------+----------------------------+----+
- | rolb [HL]            | CE:97                  |  mem8[HL] <- mem8[HL] << 1 | SCZ|
- |                      |                        |       or mem8[HL] >> 7     |    |
+ | rol [HL]             | CE:97                  | ar <- I<<16 + HL + ofs8    |S CZ|
+ |                      |                        |  mem8[ar] <- mem8[ar] << 1 |    |
+ |                      |                        |       or mem8[ar] >> 7     |    |
  +----------------------+------------------------+----------------------------+----+
- | rorcb A              | CE:98                  | A <- A>>1 or CF<<7         | SCZ|
+ | rorc A               | CE:98                  | A <- A>>1 or CF<<7         |S CZ|
  +----------------------+------------------------+----------------------------+----+
- | rorcb B              | CE:99                  | B <- B>>1 or CF<<7         | SCZ|
+ | rorc B               | CE:99                  | B <- B>>1 or CF<<7         |S CZ|
  +----------------------+------------------------+----------------------------+----+
- | rorcb [NN+ofs8]      | CE:9A:ofs8             | ar <- HL[23:16]<<16+NN+ofs8| SCZ|
+ | rorc [N+ofs8]        | CE:9A:ofs8             | ar <- I<<16 + N<<8 + ofs8  |S CZ|
  |                      |                        |  mem8[ar]<-mem8[ar]>>1 or  |    |
  |                      |                        |         CF << 7            |    |
  +----------------------+------------------------+----------------------------+----+
- | rorcb [HL]           | CE:9B                  | mem8[HL] <- mem8[HL]>>1 or | SCZ|
+ | rorc [HL]            | CE:9B                  | mem8[HL] <- mem8[HL]>>1 or |S CZ|
  |                      |                        |         CF << 7            |    |
  +----------------------+------------------------+----------------------------+----+
- | rorb A               | CE:9C                  |  A <- A >> 1 or A << 7     | SCZ|
+ | ror A                | CE:9C                  |  A <- A >> 1 or A << 7     |S CZ|
  +----------------------+------------------------+----------------------------+----+
- | rorb B               | CE:9D                  |  B <- B >> 1 or B << 7     | SCZ|
+ | ror B                | CE:9D                  |  B <- B >> 1 or B << 7     |S CZ|
  +----------------------+------------------------+----------------------------+----+
- | rorb [NN+ofs8]       | CE:9E:ofs8             | ar <- HL[23:16]<<16+NN+ofs8| SCZ|
+ | ror [N+ofs8]         | CE:9E:ofs8             | ar <- I<<16 + N<<8 + ofs8  |S CZ|
  |                      |                        |  mem8[ar] <- mem8[ar] >> 1 |    |
  |                      |                        |           or mem8[ar] << 7 |    |
  +----------------------+------------------------+----------------------------+----+
- | rorb [HL]            | CE:9F                  | mem8[HL] <- mem8[HL]>>1 or | SCZ|
+ | ror [HL]             | CE:9F                  | mem8[HL] <- mem8[HL]>>1 or |S CZ|
  |                      |                        |           or mem8[HL]<<7   |    |
  +----------------------+------------------------+----------------------------+----+
- | notb A               | CE:A0                  |  A <- A xor 0xFF           | SZ |
+ | not A                | CE:A0                  |  A <- A xor 0xFF           |S  Z|
  +----------------------+------------------------+----------------------------+----+
- | notb B               | CE:A1                  |  B <- B xor 0xFF           | SZ |
+ | not B                | CE:A1                  |  B <- B xor 0xFF           |S  Z|
  +----------------------+------------------------+----------------------------+----+
- | notb [NN+ofs8]       | CE:A2:ofs8             | ar <- HL[23:16]<<16+NN+ofs8| SZ |
+ | not [N+ofs8]         | CE:A2:ofs8             | ar <- I<<16 + N<<8 + ofs8  |S  Z|
  |                      |                        | mem8[ar]<-mem8[ar] xor 0xFF|    |
  +----------------------+------------------------+----------------------------+----+
- | notb [HL]            | CE:A3                  | mem8[HL]<-mem8[HL] xor 0xFF| SZ |
+ | not [HL]             | CE:A3                  | ar <- I<<16 + HL + ofs8    |S  Z|
+ |                      |                        | mem8[HL]<-mem8[HL] xor 0xFF|    |
  +----------------------+------------------------+----------------------------+----+
- | negb A               | CE:A4                  |  A <- A xor 0xFF + 1       |SOCZ|
+ | neg A                | CE:A4                  |  A <- A xor 0xFF + 1       |SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | negb B               | CE:A5                  |  B <- B xor 0xFF + 1       |SOCZ|
+ | neg B                | CE:A5                  |  B <- B xor 0xFF + 1       |SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | negb [NN+ofs8]       | CE:A6:ofs8             | ar <- HL[23:16]<<16+NN+ofs8|SOCZ|
- |                      |                        | mem8[ar]<-m8[ar] xor 0xFF+1|    |
+ | neg [N+ofs8]         | CE:A6:ofs8             | ar <- I<<16 + N<<8 + ofs8  |SOCZ|
+ |                      |                        | mem8[ar]<- m8[ar]xor 0xFF+1|    |
  +----------------------+------------------------+----------------------------+----+
- | negb [HL]            | CE:A7                  | mem8[HL]<-m8[HL] xor 0xFF+1|SOCZ|
+ | neg [HL]             | CE:A7                  | ar <- I<<16 + N<<8 + ofs8  |SOCZ|
+ |                      |                        | mem8[HL]<- m8[HL]xor 0xFF+1|    |
  +----------------------+------------------------+----------------------------+----+
- | exts BA,A            | CE:A8                  |  if A and 0x80 = 0 then    | -  |
+ | ex BA,A              | CE:A8                  |  if A and 0x80 = 0 then    | -  |
  |                      |                        |  B <- 0x00 else B <- 0xFF  |    |
  +----------------------+------------------------+----------------------------+----+
- | andb B,imm8          | CE:B0:imm8             |  B <- B and imm8           | SZ |
+ | halt                 | CE:AE                  |  Halt CPU                  | -  |
  +----------------------+------------------------+----------------------------+----+
- | andb L,imm8          | CE:B1:imm8             |  L <- L and imm8           | SZ |
+ | stop                 | CE:AF                  |  Stop CPU (never use it!)  | -  |
  +----------------------+------------------------+----------------------------+----+
- | andb H,imm8          | CE:B2:imm8             |  H <- H and imm8           | SZ |
+ | and B,imm8           | CE:B0:imm8             |  B <- B and imm8           |S  Z|
  +----------------------+------------------------+----------------------------+----+
- | orb B,imm8           | CE:B4:imm8             |  B <- B or imm8            | SZ |
+ | and L,imm8           | CE:B1:imm8             |  L <- L and imm8           |S  Z|
  +----------------------+------------------------+----------------------------+----+
- | orb L,imm8           | CE:B5:imm8             |  L <- L or imm8            | SZ |
+ | and H,imm8           | CE:B2:imm8             |  H <- H and imm8           |S  Z|
  +----------------------+------------------------+----------------------------+----+
- | orb H,imm8           | CE:B6:imm8             |  H <- H or imm8            | SZ |
+ | or B,imm8            | CE:B4:imm8             |  B <- B or imm8            |S  Z|
  +----------------------+------------------------+----------------------------+----+
- | xorb B,imm8          | CE:B8:imm8             |  B <- B xor imm8           | SZ |
+ | or L,imm8            | CE:B5:imm8             |  L <- L or imm8            |S  Z|
  +----------------------+------------------------+----------------------------+----+
- | xorb L,imm8          | CE:B9:imm8             |  L <- L xor imm8           | SZ |
+ | or H,imm8            | CE:B6:imm8             |  H <- H or imm8            |S  Z|
  +----------------------+------------------------+----------------------------+----+
- | xorb H,imm8          | CE:BA:imm8             |  H <- H xor imm8           | SZ |
+ | xor B,imm8           | CE:B8:imm8             |  B <- B xor imm8           |S  Z|
  +----------------------+------------------------+----------------------------+----+
- | cmpb B,imm8          | CE:BC:imm8             |  temp <- B - imm8          |SOCZ|
+ | xor L,imm8           | CE:B9:imm8             |  L <- L xor imm8           |S  Z|
+ +----------------------+------------------------+----------------------------+----+
+ | xor H,imm8           | CE:BA:imm8             |  H <- H xor imm8           |S  Z|
+ +----------------------+------------------------+----------------------------+----+
+ | cmp B,imm8           | CE:BC:imm8             |  temp <- B - imm8          |SOCZ|
  |                      |                        |update flags but don't store|    |
  |                      |                        | (???)                      |    |
  +----------------------+------------------------+----------------------------+----+
- | cmpb L,imm8          | CE:BD:imm8             |  temp <- L - imm8          |SOCZ|
+ | cmp L,imm8           | CE:BD:imm8             |  temp <- L - imm8          |SOCZ|
  |                      |                        |update flags but don't store|    |
  |                      |                        | (???)                      |    |
  +----------------------+------------------------+----------------------------+----+
- | cmpb H,imm8          | CE:BE:imm8             |  temp <- H - imm8          |SOCZ|
+ | cmp H,imm8           | CE:BE:imm8             |  temp <- H - imm8          |SOCZ|
  |                      |                        |update flags but don't store|    |
  |                      |                        | (???)                      |    |
  +----------------------+------------------------+----------------------------+----+
- | cmpb N,imm8          | CE:BF:imm8             |  temp <- N - imm8          |SOCZ|
+ | cmp N,imm8           | CE:BF:imm8             |  temp <- N - imm8          |SOCZ|
  |                      |                        |update flags but don't store|    |
  |                      |                        | (???)                      |    |
  +----------------------+------------------------+----------------------------+----+
- | movb A,N             | CE:C0                  |  A <- NN[15:8]             | -  |
+ | mov A,N              | CE:C0                  |  A <- N                    | -  |
  +----------------------+------------------------+----------------------------+----+
- | movb A,FLAGS         | CE:C1                  |  A <- FLAGS                | -  |
+ | mov A,F              | CE:C1                  |  A <- F                    | -  |
  +----------------------+------------------------+----------------------------+----+
- | movb N,A             | CE:C2                  |  NN[15:8] <- A             | -  |
+ | mov N,A              | CE:C2                  |  N <- A                    | -  |
  +----------------------+------------------------+----------------------------+----+
- | movb FLAGS,A         | CE:C3                  |  FLAGS <- A                |SOCZ|
+ | mov F,A              | CE:C3                  |  F <- A                    |socz|
  +----------------------+------------------------+----------------------------+----+
-%| movb U,imm8          | CE:C4:imm8             |  U <- imm8                 | -  |
+ | mov U,imm8           | CE:C4:imm8             |  U <- imm8                 | -  |
  +----------------------+------------------------+----------------------------+----+
- | movx HL,imm8         | CE:C5:imm8             |  HL[23:16] <- imm8         | -  |
+ | mov I,imm8           | CE:C5:imm8             |  I <- imm8                 | -  |
  +----------------------+------------------------+----------------------------+----+
- | movx X1,imm8         | CE:C6:imm8             |  X1[23:16] <- imm8         | -  |
+ | mov XI,imm8          | CE:C6:imm8             |  XI <- imm8                | -  |
  +----------------------+------------------------+----------------------------+----+
- | movx X2,imm8         | CE:C7:imm8             |  X2[23:16] <- imm8         | -  |
+ | mov YI,imm8          | CE:C7:imm8             |  YI <- imm8                | -  |
  +----------------------+------------------------+----------------------------+----+
-%| movb A,V             | CE:C8                  |  A <- V                    | -  |
+ | mov A,V              | CE:C8                  |  A <- V                    | -  |
  +----------------------+------------------------+----------------------------+----+
- | movx A,HL            | CE:C9                  |  A <- HL[23:16]            | -  |
+ | mov A,I              | CE:C9                  |  A <- I                    | -  |
  +----------------------+------------------------+----------------------------+----+
- | movx A,X1            | CE:CA                  |  A <- X1[23:16]            | -  |
+ | mov A,XI             | CE:CA                  |  A <- XI                   | -  |
  +----------------------+------------------------+----------------------------+----+
- | movx A,X2            | CE:CB                  |  A <- X2[23:16]            | -  |
+ | mov A,YI             | CE:CB                  |  A <- YI                   | -  |
  +----------------------+------------------------+----------------------------+----+
-%| movb U,A             | CE:CC                  |  U <- A                    | -  |
+ | mov U,A              | CE:CC                  |  U <- A                    | -  |
  +----------------------+------------------------+----------------------------+----+
- | movx HL,A            | CE:CD                  |  HL[23:16] <- A            | -  |
+ | mov I,A              | CE:CD                  |  I <- A                    | -  |
  +----------------------+------------------------+----------------------------+----+
- | movx X1,A            | CE:CE                  |  X1[23:16] <- A            | -  |
+ | mov XI,A             | CE:CE                  |  XI <- A                   | -  |
  +----------------------+------------------------+----------------------------+----+
- | movx X2,A            | CE:CF                  |  X2[23:16] <- A            | -  |
+ | mov YI,A             | CE:CF                  |  YI <- A                   | -  |
  +----------------------+------------------------+----------------------------+----+
- | movb rb,[ofs16]      | CE:D0+rb:ofs16L:ofs16H |  rb <- mem8[ofs16]         | -  |
+ | mov rb,[ofs16]       | CE:D0+rb:ofs16L:ofs16H |  rb <- mem8[ofs16]         | -  |
  +----------------------+------------------------+----------------------------+----+
- | movb [ofs16],rb      | CE:D4+rb:ofs16L:ofs16H |  mem8[ofs16] <- rb         | -  |
+ | mov [ofs16],rb       | CE:D4+rb:ofs16L:ofs16H |  mem8[ofs16] <- rb         | -  |
  +----------------------+------------------------+----------------------------+----+
  | mul L,A              | CE:D8                  |  HL <- L * A               |SOCZ|
  +----------------------+------------------------+----------------------------+----+
  | div HL,A             | CE:D9                  |  HL <- HL / A              |SOCZ|
- |                      |                        |  if A = 0 then FLAGS<-0C   |SOCZ|
+ |                      |                        |  if A = 0 then FLAGS<-0C   |    |
  +----------------------+------------------------+----------------------------+----+
  | jl disp8             | CE:E0:disp8            |  if SF <> OF then          | -  |
-%|                      |                        |       V <- U               |    |
+ |                      |                        |       V <- U               |    |
  |                      |                        |       PC <- PC + disp8 - 1 |    |
  +----------------------+------------------------+----------------------------+----+
  | jle disp8            | CE:E1:disp8            |  if ZF=1 or SF <> OF then  | -  |
-%|                      |                        |       V <- U               |    |
+ |                      |                        |       V <- U               |    |
  |                      |                        |       PC <- PC + disp8 - 1 |    |
  +----------------------+------------------------+----------------------------+----+
  | jg disp8             | CE:E2:disp8            |  if ZF=0 and SF = OF then  | -  |
-%|                      |                        |       V <- U               |    |
+ |                      |                        |       V <- U               |    |
  |                      |                        |       PC <- PC + disp8 - 1 |    |
  +----------------------+------------------------+----------------------------+----+
  | jge disp8            | CE:E3:disp8            |  if SF = OF then           | -  |
-%|                      |                        |       V <- U               |    |
+ |                      |                        |       V <- U               |    |
  |                      |                        |       PC <- PC + disp8 - 1 |    |
  +----------------------+------------------------+----------------------------+----+
  | jo disp8             | CE:E4:disp8            |  if OF = 1 then            | -  |
-%|                      |                        |       V <- U               |    |
+ |                      |                        |       V <- U               |    |
  |                      |                        |       PC <- PC + disp8 - 1 |    |
  +----------------------+------------------------+----------------------------+----+
  | jno disp8            | CE:E5:disp8            |  if OF = 0 then            | -  |
-%|                      |                        |       V <- U               |    |
+ |                      |                        |       V <- U               |    |
  |                      |                        |       PC <- PC + disp8 - 1 |    |
  +----------------------+------------------------+----------------------------+----+
  | jns disp8            | CE:E6:disp8            |  if SF = 0 then            | -  |
-%|                      |                        |       V <- U               |    |
+ |                      |                        |       V <- U               |    |
  |                      |                        |       PC <- PC + disp8 - 1 |    |
  +----------------------+------------------------+----------------------------+----+
  | js disp8             | CE:E7:disp8            |  if SF = 1 then            | -  |
-%|                      |                        |       V <- U               |    |
+ |                      |                        |       V <- U               |    |
  |                      |                        |       PC <- PC + disp8 - 1 |    |
  +----------------------+------------------------+----------------------------+----+
  | calll disp8          | CE:F0:disp8            |  if SF <> OF then          | -  |
  |                      |                        |       SP <- SP - 3         |    |
-%|                      |                        |       mem16[SP] <- PC      |    |
-%|                      |                        |       mem8[SP+2] <- V      |    |
-%|                      |                        |       V <- U               |    |
+ |                      |                        |       mem16[SP] <- PC      |    |
+ |                      |                        |       mem8[SP+2] <- V      |    |
+ |                      |                        |       V <- U               |    |
  |                      |                        |       PC <- PC + disp8 - 1 |    |
  +----------------------+------------------------+----------------------------+----+
  | callle disp8         | CE:F1:disp8            |  if ZF=1 or SF <> OF then  | -  |
  |                      |                        |       SP <- SP - 3         |    |
-%|                      |                        |       mem16[SP] <- PC      |    |
-%|                      |                        |       mem8[SP+2] <- V      |    |
-%|                      |                        |       V <- U               |    |
+ |                      |                        |       mem16[SP] <- PC      |    |
+ |                      |                        |       mem8[SP+2] <- V      |    |
+ |                      |                        |       V <- U               |    |
  |                      |                        |       PC <- PC + disp8 - 1 |    |
  +----------------------+------------------------+----------------------------+----+
  | callg disp8          | CE:F2:disp8            |  if ZF=0 and SF = OF then  | -  |
  |                      |                        |       SP <- SP - 3         |    |
-%|                      |                        |       mem16[SP] <- PC      |    |
-%|                      |                        |       mem8[SP+2] <- V      |    |
-%|                      |                        |       V <- U               |    |
+ |                      |                        |       mem16[SP] <- PC      |    |
+ |                      |                        |       mem8[SP+2] <- V      |    |
+ |                      |                        |       V <- U               |    |
  |                      |                        |       PC <- PC + disp8 - 1 |    |
  +----------------------+------------------------+----------------------------+----+
  | callge disp8         | CE:F3:disp8            |  if SF = OF then           | -  |
  |                      |                        |       SP <- SP - 3         |    |
-%|                      |                        |       mem16[SP] <- PC      |    |
-%|                      |                        |       mem8[SP+2] <- V      |    |
-%|                      |                        |       V <- U               |    |
+ |                      |                        |       mem16[SP] <- PC      |    |
+ |                      |                        |       mem8[SP+2] <- V      |    |
+ |                      |                        |       V <- U               |    |
  |                      |                        |       PC <- PC + disp8 - 1 |    |
  +----------------------+------------------------+----------------------------+----+
  | callo disp8          | CE:F4:disp8            |  if OF = 1 then            | -  |
  |                      |                        |       SP <- SP - 3         |    |
-%|                      |                        |       mem16[SP] <- PC      |    |
-%|                      |                        |       mem8[SP+2] <- V      |    |
-%|                      |                        |       V <- U               |    |
+ |                      |                        |       mem16[SP] <- PC      |    |
+ |                      |                        |       mem8[SP+2] <- V      |    |
+ |                      |                        |       V <- U               |    |
  |                      |                        |       PC <- PC + disp8 - 1 |    |
  +----------------------+------------------------+----------------------------+----+
  | callno disp8         | CE:F5:disp8            |  if OF = 0 then            | -  |
  |                      |                        |       SP <- SP - 3         |    |
-%|                      |                        |       mem16[SP] <- PC      |    |
-%|                      |                        |       mem8[SP+2] <- V      |    |
-%|                      |                        |       V <- U               |    |
+ |                      |                        |       mem16[SP] <- PC      |    |
+ |                      |                        |       mem8[SP+2] <- V      |    |
+ |                      |                        |       V <- U               |    |
  |                      |                        |       PC <- PC + disp8 - 1 |    |
  +----------------------+------------------------+----------------------------+----+
  | callns disp8         | CE:F6:disp8            |  if SF = 0 then            | -  |
  |                      |                        |       SP <- SP - 3         |    |
-%|                      |                        |       mem16[SP] <- PC      |    |
-%|                      |                        |       mem8[SP+2] <- V      |    |
-%|                      |                        |       V <- U               |    |
+ |                      |                        |       mem16[SP] <- PC      |    |
+ |                      |                        |       mem8[SP+2] <- V      |    |
+ |                      |                        |       V <- U               |    |
  |                      |                        |       PC <- PC + disp8 - 1 |    |
  +----------------------+------------------------+----------------------------+----+
  | calls disp8          | CE:F7:disp8            |  if SF = 1 then            | -  |
  |                      |                        |       SP <- SP - 3         |    |
-%|                      |                        |       mem16[SP] <- PC      |    |
-%|                      |                        |       mem8[SP+2] <- V      |    |
-%|                      |                        |       V <- U               |    |
+ |                      |                        |       mem16[SP] <- PC      |    |
+ |                      |                        |       mem8[SP+2] <- V      |    |
+ |                      |                        |       V <- U               |    |
  |                      |                        |       PC <- PC + disp8 - 1 |    |
  +----------------------+------------------------+----------------------------+----+
                               
 EXTENDED 1               
              
  +----------------------+------------------------+----------------------------+----+
- | addw BA,rw           | CF:00+rw               |  BA <- BA + rw             |SOCZ|
+ | add BA,rw            | CF:00+rw               |  BA <- BA + rw             |SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | addcw BA,rw          | CF:04+rw               |  BA <- BA + rw + CF        |SOCZ|
+ | adc BA,rw            | CF:04+rw               |  BA <- BA + rw + CF        |SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | subw BA,rw           | CF:08+rw               |  BA <- BA - rw             |SOCZ|
+ | sub BA,rw            | CF:08+rw               |  BA <- BA - rw             |SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | subcw BA,rw          | CF:0C+rw               |  BA <- BA - rw - CF        |SOCZ|
+ | sbc BA,rw            | CF:0C+rw               |  BA <- BA - rw - CF        |SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | cmpw BA,rw           | CF:18+rw               |  temp <- BA - rw           |SOCZ|
+ | cmp BA,rw            | CF:18+rw               |  temp <- BA - rw           |SOCZ|
  |                      |                        |update flags but don't store|    |
  +----------------------+------------------------+----------------------------+----+
- | addw HL,rw           | CF:20+rw               |  HL <- HL + rw             |SOCZ|
+ | add HL,rw            | CF:20+rw               |  HL <- HL + rw             |SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | addcw HL,rw          | CF:24+rw               |  HL <- HL + rw + CF        |SOCZ|
+ | adc HL,rw            | CF:24+rw               |  HL <- HL + rw + CF        |SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | subw HL,rw           | CF:28+rw               |  HL <- HL - rw             |SOCZ|
+ | sub HL,rw            | CF:28+rw               |  HL <- HL - rw             |SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | subcw HL,rw          | CF:2C+rw               |  HL <- HL - rw - CF        |SOCZ|
+ | sbc HL,rw            | CF:2C+rw               |  HL <- HL - rw - CF        |SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | cmpw HL,rw           | CF:38+rw               |  temp <- HL - rw           |SOCZ|
+ | cmp HL,rw            | CF:38+rw               |  temp <- HL - rw           |SOCZ|
  |                      |                        |update flags but don't store|    |
  +----------------------+------------------------+----------------------------+----+
- | addw X1,BA           | CF:40                  |  X1 <- X1 + BA             |SOCZ|
+ | add X,BA             | CF:40                  |  X1 <- X1 + BA             |SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | addw X1,HL           | CF:41                  |  X1 <- X1 + HL             |SOCZ|
+ | add X,HL             | CF:41                  |  X1 <- X1 + HL             |SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | addw X2,BA           | CF:42                  |  X2 <- X2 + BA             |SOCZ|
+ | add Y,BA             | CF:42                  |  X2 <- X2 + BA             |SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | addw X2,HL           | CF:43                  |  X2 <- X2 + HL             |SOCZ|
+ | add Y,HL             | CF:43                  |  X2 <- X2 + HL             |SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | addw SP,BA           | CF:44                  |  SP <- SP + BA             |SOCZ|
+ | add SP,BA            | CF:44                  |  SP <- SP + BA             |SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | addw SP,HL           | CF:45                  |  SP <- SP + HL             |SOCZ|
+ | add SP,HL            | CF:45                  |  SP <- SP + HL             |SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | subw X1,BA           | CF:48                  |  X1 <- X1 - BA             |SOCZ|
+ | sub X,BA             | CF:48                  |  X1 <- X1 - BA             |SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | subw X1,HL           | CF:49                  |  X1 <- X1 - HL             |SOCZ|
+ | sub X,HL             | CF:49                  |  X1 <- X1 - HL             |SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | subw X2,BA           | CF:4A                  |  X2 <- X2 - BA             |SOCZ|
+ | sub Y,BA             | CF:4A                  |  X2 <- X2 - BA             |SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | subw X2,HL           | CF:4B                  |  X2 <- X2 - HL             |SOCZ|
+ | sub Y,HL             | CF:4B                  |  X2 <- X2 - HL             |SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | subw SP,BA           | CF:4C                  |  SP <- SP - BA             |SOCZ|
+ | sub SP,BA            | CF:4C                  |  SP <- SP - BA             |SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | subw SP,HL           | CF:4D                  |  SP <- SP - HL             |SOCZ|
+ | sub SP,HL            | CF:4D                  |  SP <- SP - HL             |SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | cmpw SP,BA           | CF:5C                  |  temp <- SP - BA           |SOCZ|
+ | cmp SP,BA            | CF:5C                  |  temp <- SP - BA           |SOCZ|
  |                      |                        |update flags but don't store|    |
  +----------------------+------------------------+----------------------------+----+
- | cmpw SP,HL           | CF:5D                  |  temp <- SP - HL           |SOCZ|
+ | cmp SP,HL            | CF:5D                  |  temp <- SP - HL           |SOCZ|
  |                      |                        |update flags but don't store|    |
  +----------------------+------------------------+----------------------------+----+
-%| cmpnw rw,imm16       | CF:60+rw:imm16L:imm16H | temp <- rw+imm16+CF        | -  | 
-%|                      |                        |update flags but don't store|    |
-%|                      |                        | if CF = 0 ->               |    |
-%|                      |                        |  same as cmpw rw,-imm16    |    |
-%|                      |                        | if CF = 1 ->               |    |
-%|                      |                        |  same as cmpw rw,not imm16 |    |
+ | adc ba,imm16         | CF:60:imm16L:imm16H    |  BA <- BA + imm16 + CF     |SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | addw SP,imm16        | CF:68:imm16L:imm16H    |  SP <- SP + imm16          |SOCZ|
+ | adc hl,imm16         | CF:61:imm16L:imm16H    |  HL <- HL + imm16 + CF     |SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | subw SP,imm16        | CF:6A:imm16L:imm16H    |  SP <- SP - imm16          |SOCZ|
+ | sbc ba,imm16         | CF:62:imm16L:imm16H    |  BA <- BA - imm16 - CF     |SOCZ|
  +----------------------+------------------------+----------------------------+----+
- | cmpw SP,imm16        | CF:6C:imm16L:imm16H    |  temp <- SP + imm16        |SOCZ|
+ | sbc hl,imm16         | CF:63:imm16L:imm16H    |  HL <- HL - imm16 - CF     |SOCZ|
+ +----------------------+------------------------+----------------------------+----+
+ | add SP,imm16         | CF:68:imm16L:imm16H    |  SP <- SP + imm16          |SOCZ|
+ +----------------------+------------------------+----------------------------+----+
+ | sub SP,imm16         | CF:6A:imm16L:imm16H    |  SP <- SP - imm16          |SOCZ|
+ +----------------------+------------------------+----------------------------+----+
+ | cmp SP,imm16         | CF:6C:imm16L:imm16H    |  temp <- SP + imm16        |SOCZ|
  |                      |                        |update flags but don't store|    |
  +----------------------+------------------------+----------------------------+----+
- | movw SP,imm16        | CF:6E:imm16L:imm16H    |  SP <- imm16               | -  |
+ | mov SP,imm16         | CF:6E:imm16L:imm16H    |  SP <- imm16               | -  |
  +----------------------+------------------------+----------------------------+----+
-%| movw rw,[SP+ofs8]    | CF:70+rw:ofs8          |  rw <- mem16[SP+ofs8]      | -  | 
-%+----------------------+------------------------+----------------------------+----+
-%| movw [SP+ofs8],rw    | CF:74+rw:ofs8          |  mem16[SP+ofs8] <- rw      | -  | 
-%+----------------------+------------------------+----------------------------+----+
-%| movw SP,[ofs16]      | CF:78:ofs16L:ofs16H    | SP <-                      | -  | 
-%|                      |                        | mem16[HL[23:16]<<16+ofs16] |    |
-%+----------------------+------------------------+----------------------------+----+
-%| movw [ofs16],SP      | CF:7C:ofs16L:ofs16H    | mem16[HL[23:16]<<16+ofs16] | -  | 
-%|                      |                        | <- SP                      |    |
+ | mov rw,[SP+ofs8]     | CF:70+rw:ofs8          |  rw <- mem16[SP+ofs8]      | -  | 
  +----------------------+------------------------+----------------------------+----+
- | pushb rb             | CF:B0+rb               |  SP <- SP - 1              | -  |
+ | mov [SP+ofs8],rw     | CF:74+rw:ofs8          |  mem16[SP+ofs8] <- rw      | -  | 
+ +----------------------+------------------------+----------------------------+----+
+ | mov SP,[ofs16]       | CF:78:ofs16L:ofs16H    |  SP <-                     | -  | 
+ |                      |                        |  mem16[I<<16 + ofs16]      |    |
+ +----------------------+------------------------+----------------------------+----+
+ | mov [ofs16],SP       | CF:7C:ofs16L:ofs16H    |  mem16[I<<16 + ofs16]      | -  | 
+ |                      |                        |  <- SP                     |    |
+ +----------------------+------------------------+----------------------------+----+
+ | push rb              | CF:B0+rb               |  SP <- SP - 1              | -  |
  |                      |                        |  mem8[SP] <- rb            |    |
  +----------------------+------------------------+----------------------------+----+
- | popb rb              | CF:B4+rb               |  rb <- mem8[SP]            | -  |
+ | pop rb               | CF:B4+rb               |  rb <- mem8[SP]            | -  |
  |                      |                        |  SP <- SP + 1              |    |
  +----------------------+------------------------+----------------------------+----+
  | pusha                | CF:B8                  |  SP <- SP - 9              | -  |
  |                      |                        |  mem16[SP+7] <- BA         |    |
  |                      |                        |  mem16[SP+5] <- HL         |    |
- |                      |                        |  mem16[SP+3] <- X1         |    |
- |                      |                        |  mem16[SP+1] <- X2         |    |
+ |                      |                        |  mem16[SP+3] <- X          |    |
+ |                      |                        |  mem16[SP+1] <- Y          |    |
  |                      |                        |  mem8[SP] <- N             |    |
  +----------------------+------------------------+----------------------------+----+
  | pushax               | CF:B9                  |  SP <- SP - 12             | -  |
  |                      |                        |  mem16[SP+10] <- BA        |    |
  |                      |                        |  mem16[SP+8] <- HL         |    |
- |                      |                        |  mem16[SP+6] <- X1         |    |
- |                      |                        |  mem16[SP+4] <- X2         |    |
+ |                      |                        |  mem16[SP+6] <- X          |    |
+ |                      |                        |  mem16[SP+4] <- Y          |    |
  |                      |                        |  mem8[SP+3] <- N           |    |
- |                      |                        |  mem8[SP+2] <- HL[23:16]   |    |
- |                      |                        |  mem8[SP+1] <- X1[23:16]   |    |
- |                      |                        |  mem8[SP] <- X2[23:16]     |    |
+ |                      |                        |  mem8[SP+2] <- I           |    |
+ |                      |                        |  mem8[SP+1] <- XI          |    |
+ |                      |                        |  mem8[SP] <- YI            |    |
  +----------------------+------------------------+----------------------------+----+
  | popa                 | CF:BC                  |  BA <- mem16[SP+7]         | -  |
  |                      |                        |  HL <- mem16[SP+5]         |    |
- |                      |                        |  X1 <- mem16[SP+3]         |    |
- |                      |                        |  X2 <- mem16[SP+1]         |    |
+ |                      |                        |  X <- mem16[SP+3]          |    |
+ |                      |                        |  Y <- mem16[SP+1]          |    |
  |                      |                        |  N <- mem8[SP]             |    |
  |                      |                        |  SP <- SP + 9              |    |
  +----------------------+------------------------+----------------------------+----+
  | popax                | CF:BD                  |  BA <- mem16[SP+10]        | -  |
  |                      |                        |  HL <- mem16[SP+8]         |    |
- |                      |                        |  X1 <- mem16[SP+6]         |    |
- |                      |                        |  X2 <- mem16[SP+4]         |    |
+ |                      |                        |  X <- mem16[SP+6]          |    |
+ |                      |                        |  Y <- mem16[SP+4]          |    |
  |                      |                        |  N <- mem8[SP+3]           |    |
- |                      |                        |  HL[23:16] <- mem8[SP+2]   |    |
- |                      |                        |  X1[23:16] <- mem8[SP+1]   |    |
- |                      |                        |  X2[23:16] <- mem8[SP]     |    |
+ |                      |                        |  I <- mem8[SP+2]           |    |
+ |                      |                        |  XI <- mem8[SP+1]          |    |
+ |                      |                        |  YI <- mem8[SP]            |    |
  |                      |                        |  SP <- SP + 12             |    |
  +----------------------+------------------------+----------------------------+----+
- | movw rw,[HL]         | CF:C0+rw               |  rw <- mem16[HL]           | -  |
+ | mov rw,[HL]          | CF:C0+rw               |  rw <- mem16[HL]           | -  |
  +----------------------+------------------------+----------------------------+----+
- | movw [HL],rw         | CF:C4+rw               |  mem16[HL] <- rw           | -  |
+ | mov [HL],rw          | CF:C4+rw               |  mem16[HL] <- rw           | -  |
  +----------------------+------------------------+----------------------------+----+
- | movw rw,[X1]         | CF:D0+rw               |  rw <- mem16[X1]           | -  |
+ | mov rw,[X]           | CF:D0+rw               |  rw <- mem16[X]            | -  |
  +----------------------+------------------------+----------------------------+----+
- | movw [x1],rw         | CF:D4+rw               |  mem16[X1] <- rw           | -  |
+ | mov [X],rw           | CF:D4+rw               |  mem16[X] <- rw            | -  |
  +----------------------+------------------------+----------------------------+----+
- | movw rw,[X2]         | CF:D8+rw               |  rw <- mem16[X2]           | -  |
+ | mov rw,[Y]           | CF:D8+rw               |  rw <- mem16[Y]            | -  |
  +----------------------+------------------------+----------------------------+----+
- | movw [x2],rw         | CF:DC+rw               |  mem16[X2] <- rw           | -  |
+ | mov [Y],rw           | CF:DC+rw               |  mem16[Y] <- rw            | -  |
  +----------------------+------------------------+----------------------------+----+
- | movw rw1,rw2         | CF:E0+rw1<<2+rw2       |  rw1 <- rw2                |    |
+ | mov rw1,rw2          | CF:E0+rw1<<2+rw2       |  rw1 <- rw2                | -  |
  +----------------------+------------------------+----------------------------+----+
-%| movw SP,rw           | CF:F0+rw               |  SP <- rw                  | -  |
-%+----------------------+------------------------+----------------------------+----+
-%| movw HL,SP           | CF:F4                  |  HL <- SP                  | -  |
+ | mov SP,rw            | CF:F0+rw               |  SP <- rw                  | -  |
  +----------------------+------------------------+----------------------------+----+
- | movw HL,PC           | CF:F5                  |  HL <- PC                  | -  |
+ | mov HL,SP            | CF:F4                  |  HL <- SP                  | -  |
  +----------------------+------------------------+----------------------------+----+
-%| movw BA,SP           | CF:F8                  |  BA <- SP                  | -  |
+ | mov HL,PC            | CF:F5                  |  HL <- PC                  | -  |
  +----------------------+------------------------+----------------------------+----+
- | movw BA,PC           | CF:F9                  |  BA <- PC                  | -  |
+ | mov BA,SP            | CF:F8                  |  BA <- SP                  | -  |
  +----------------------+------------------------+----------------------------+----+
-%| movw X1,SP           | CF:FA                  |  X1 <- SP                  | -  |
-%+----------------------+------------------------+----------------------------+----+
-%| movw X2,SP           | CF:FE                  |  X2 <- SP                  | -  |
+ | mov BA,PC            | CF:F9                  |  BA <- PC                  | -  |
+ +----------------------+------------------------+----------------------------+----+
+ | mov X,SP             | CF:FA                  |  X1 <- SP                  | -  |
+ +----------------------+------------------------+----------------------------+----+
+ | mov Y,SP             | CF:FE                  |  X2 <- SP                  | -  |
  +----------------------+------------------------+----------------------------+----+
 
 INVALID OPCODES (NON-EXTENDED) : 7C, FE
@@ -1359,6 +1351,8 @@ INVALID OPCODES (EXTENDED 1): 10-17, 1C-1F, 30-37, 3C-3F, 46-47, 4E-5B,
 ------------------------------------------------------------------------------
  MINDX ASSEMBLER SAMPLE CODE
 ------------------------------------------------------------------------------
+
+**Note: This information apply to the old version.**
 
 The "mindx" assembler is able to assemble min cpu code. 
 For a good sample of code, look at sokomini sourcecode !
