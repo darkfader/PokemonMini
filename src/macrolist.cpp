@@ -14,6 +14,7 @@ MacroList::MacroList(char *name)
 
 void MacroList::AddParameter(char *string)
 {
+EEKS{printf("AddParameters '%s'\n", string);}
 	if (!parameters) parameters = new StringList(string); else parameters->Add(string);
 }
 
@@ -65,27 +66,27 @@ EEKS{printf("exec %s\n", _line);}
 	MacroList *m = FindMacro(name);
 	if (m)
 	{
+EEKS{printf("found macro at %p\n", m);}
 		// process parameters
 		StringList *paramname = m->parameters;
-
-		char *paramvalue = strtok(0, "");
+EEKS{StringList *p = m->parameters; while (p) { printf("parameters string '%s'\n", p->string); p = p->next; }}
+		char *paramvalue = strtok(0, "");	// after macro name comes the first parameter
 		if (paramvalue)
 		{
 			if (isspace2(paramvalue[0])) paramvalue = strskipspace(paramvalue);
-EEKS{printf("%d '%s'\n", paramname, paramvalue);}
-			if (strchr(endline_chars, *paramvalue)) paramvalue = 0;
+			if (strchr(endline_chars, *paramvalue)) paramvalue = 0;		// non-space character is an end-of-line? then it's no parameter
+EEKS{printf("at %p '%s'\n", paramname, paramvalue);}
 		}
 
-		//char *paramvalue;
-		//while ((paramvalue = strtok(0, delim_chars)))
-		
 		while (paramname && paramvalue)
 		{
-EEKS{printf("paramvalue: '%s'\n", paramvalue);}
+EEKS{printf("paramname: '%s', paramvalue: '%s'\n", paramname, paramvalue);}
 			if (paramname->string[0] == '$')		// force string
 			{
-				char *paramvalue2 = strtok(paramvalue, delim_chars);
-				paramvalue = strtok(0, "");
+				char *paramvalue2 = strtok(paramvalue, delim_chars);	// take string until delimiter
+EEKS{printf("string param: '%s'\n", paramvalue2);}
+				paramvalue = strtok(0, "");		// continue with the rest later
+				if (strchr(endline_chars, *paramvalue)) paramvalue = 0;		// non-space character is an end-of-line? then it's no parameter
 				ValueType paramvalue3(paramvalue2);
 				SetSymbolValue(paramname->string+1, paramvalue3);
 			}
