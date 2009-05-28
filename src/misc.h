@@ -6,8 +6,11 @@
  */
 #define TMPSIZE				1024
 #define FREE(x)				{ if (x) free(x); x = 0; }
-#define EEKS				if (0)
-
+#ifdef DEBUG
+	#define EEKS				if (1)
+#else
+	#define EEKS				if (0)
+#endif
 //#include <stdio.h>
 
 /*

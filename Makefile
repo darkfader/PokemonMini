@@ -1,5 +1,5 @@
-VERSION := 14
-MINDX_ZIP := "http://pokeme.shizzle.it/infos/PM Dev/Assemblers/mindx_v13.zip"
+VERSION := 15
+MINDX_ZIP := "http://pokeme.shizzle.it/infos/PM Dev/Assemblers/mindx_v14.zip"
 VERSION2 :=
 PATH := .:/bin:/usr/bin:$(PATH)
 #CC := $(CXX)
@@ -10,7 +10,7 @@ LDFLAGS :=
 COMPARE = diff -q --binary
 PMDIS = pmdis
 OUTPUTS = obj/ pmas cpu/pm.s
-#pmdis
+# pmdis
 
 .PHONY: help
 help:
@@ -40,9 +40,8 @@ release: CFLAGS += -O3
 release: $(OUTPUTS)
 
 .PHONY: debugtest
-debugtest: PMAS = gdb -q --args pmas
-debugtest: debug #test/opcodes1.min test/opcodes2.min
-	#$(COMPARE) test/opcodes1.min test/opcodes2.min
+debugtest: PMAS = echo r | gdb -q -x - --args pmas
+debugtest: debug
 	$(PMAS) test/test.s test/test.min
 
 .PHONY: releasetest
@@ -51,6 +50,7 @@ releasetest: release test/readme.min test/test1.min test/test2.min test/opcodes1
 	$(COMPARE) test/opcodes1.min test/opcodes2.min
 	$(COMPARE) test/opcodes1.min test/opcodes3.min
 	$(COMPARE) test/test1.min test/test2.min
+	$(PMAS) test/test.s test/test.min
 
 #	$(PMDIS) test/opcodes2.min test/opcodes2.dis.s
 #	$(PMAS) test/opcodes2.dis.s test/opcodes2.as.min test/opcodes2.as.sym
@@ -95,8 +95,9 @@ obj/%.o: src/%.cpp
 
 .PHONY: clean
 clean:
-	-rm obj/*.o test/*.min test/*.sym test/*.dis.s parsemindx parsemindx.exe
+	-rm -f obj/*.o test/*.min test/*.sym test/*.dis.s parsemindx parsemindx.exe
 
 .PHONY: zap
 zap: clean
-	-rm pmas pmas.exe pmdis pmdis.exe cpu/pm_wordfile.txt
+	-rm -f pmas pmas.exe pmdis pmdis.exe cpu/pm_wordfile.txt
+

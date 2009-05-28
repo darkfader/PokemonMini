@@ -188,6 +188,7 @@ void ParseDirective()	//File *file)
 		{
 			if (current_macro) { eprintf("Macro name already defined.\n"); eexit(); }
 			current_macro = NewMacro(name);
+EEKS{printf("new macro at %p\n", current_macro);}
 			char *paramname;
 			while ((paramname = strtok(0, delim_chars)))
 			{
