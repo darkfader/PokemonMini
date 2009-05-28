@@ -551,6 +551,7 @@ void ReadMindxTxt(char *filename)
 	}
 
 	fclose(f);
+	memset(&instruction, 0, sizeof(instruction));
 }
 
 /*
