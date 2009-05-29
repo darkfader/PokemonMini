@@ -86,7 +86,7 @@ EEKS{printf("paramname: '%s', paramvalue: '%s'\n", paramname, paramvalue);}
 				char *paramvalue2 = strtok(paramvalue, delim_chars);	// take string until delimiter
 EEKS{printf("string param: '%s'\n", paramvalue2);}
 				paramvalue = strtok(0, "");		// continue with the rest later
-				if (strchr(endline_chars, *paramvalue)) paramvalue = 0;		// non-space character is an end-of-line? then it's no parameter
+				if (paramvalue && strchr(endline_chars, *paramvalue)) paramvalue = 0;		// non-space character is an end-of-line? then it's no parameter
 				ValueType paramvalue3(paramvalue2);
 				SetSymbolValue(paramname->string+1, paramvalue3);
 			}
