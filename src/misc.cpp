@@ -27,7 +27,7 @@ char *strskipspace(char *s)
  * strword
  * check begin of word
  */
-int strword(char *s, char *lookfor)
+int strword(const char *s, const char *lookfor)
 {
 	while (*s && *lookfor && (*s == *lookfor)) { s++; lookfor++; }
 	return ((*lookfor == 0) && (isspace2(*s) || (*s == 0)));
@@ -67,7 +67,7 @@ int HexValue(char c)
  * returns next character value
  * handles few escape sequences including hexadecimal notation
  */
-char ParseStringChar(char *&p)
+char ParseStringChar(const char *&p)
 {
 	if (*p == '\\')		// special character
 	{
@@ -96,7 +96,7 @@ char ParseStringChar(char *&p)
 /*
  * ParseString
  */
-void ParseString(char *q, char *&p)
+void ParseString(char *q, const char *&p)
 {
 	const char *delims = delim_chars;
 	if (*p == '"') { delims = "\""; p++; }
@@ -107,3 +107,4 @@ void ParseString(char *q, char *&p)
 	*q++ = 0;		// terminate
 	if (*p) p++;	// skip delim
 }
+

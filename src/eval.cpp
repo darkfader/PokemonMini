@@ -29,6 +29,7 @@
 #include "stack.h"
 #include "misc.h"
 #include "pmas.h"
+#include "symbol.h"
 
 /*
  * Defines
@@ -100,7 +101,7 @@ int Precedence(char o, bool unary)
 /*
  * EvaluateExpression
  */
-ValueType EvaluateExpression(char *input, char **next)
+ValueType EvaluateExpression(const char *input, const char **next)
 {
 EEKS{printf("EvaluateExpression '%s'\n", input);}
 	if (next) *next = 0;
@@ -116,7 +117,7 @@ EEKS{printf("EvaluateExpression '%s'\n", input);}
 	
 	bool unary = true;		// allow unary operator at start
 	
-	char *p = input;
+	const char *p = input;
 	while (*p)
 	{
 		// endline
@@ -251,7 +252,7 @@ EEKS{printf("postfix='%s'\n", postfix);}
 		}
 		else if (*p == '\'')						// ascii values
 		{
-			char *where = p++;
+			/*const char *where =*/ p++;
 			ValueType n(ValueType::zero);
 			while (*p && (*p != '\''))
 			{
@@ -262,17 +263,17 @@ EEKS{printf("postfix='%s'\n", postfix);}
 		}
 		else if ((*p == '$') || (*p == '@'))		// alternative hexadecimal prefix
 		{
-			ValueType n(strtol(p+1,&p,16));
+			ValueType n(strtol(p+1,(char **)&p,16));
 			valueStack.push(n);
 		}
 		else if ((*p == '0') && (*(p+1) == 'b'))	// binary prefix
 		{
-			ValueType n(strtol(p+2,&p,2));
+			ValueType n(strtol(p+2,(char **)&p,2));
 			valueStack.push(n);
 		}
 		else if (isdigit2(*p))						// decimal or hexadecimal
 		{
-			ValueType n(strtol(p,&p,0));
+			ValueType n(strtol(p,(char **)&p,0));
 			valueStack.push(n);
 		}
 		else if (isidentifier(*p, true))			// identifier

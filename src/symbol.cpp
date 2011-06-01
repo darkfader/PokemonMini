@@ -40,7 +40,7 @@ void Symbol::WriteSymbols(FILE *f)
 /*
  * WriteSymbols
  */
-void WriteSymbols(char *filename)
+void WriteSymbols(const char *filename)
 {
 	FILE *f = fopen(filename, "wt");
 	if (!f) { fprintf(stderr, "Error opening output file.\n"); exit(1); }
@@ -51,7 +51,7 @@ void WriteSymbols(char *filename)
 /*
  * FindSymbol
  */
-Symbol *FindSymbol(char *name)
+Symbol *FindSymbol(const char *name)
 {
 	Symbol *s = symbols;
 	while (s)
@@ -100,7 +100,7 @@ Symbol *CreateSymbol(char *name)
 /*
  * GetSymbolValue
  */
-ValueType GetSymbolValue(char *name)
+ValueType GetSymbolValue(const char *name)
 {
 	extern int pass;
 
@@ -142,7 +142,7 @@ EEKS{printf("SetSymbolValue %s, ", name); value.print();}
 /*
  * SetSymbolExpression
  */
-void SetSymbolExpression(char *name, char *expr, char **next)
+void SetSymbolExpression(char *name, const char *expr, const char **next)
 {
 EEKS{printf("SetSymbolExpression %s, %s\n", name, expr);}
 	ValueType n(EvaluateExpression(expr, next));

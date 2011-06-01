@@ -22,8 +22,11 @@ struct Symbol
 /*
  * Prototypes
  */
+Symbol *FindSymbol(const char *name);
 void SetSymbolValue(char *name, ValueType value);
-void SetSymbolExpression(char *name, char *expr, char **next);
+ValueType GetSymbolValue(const char *name);
+void SetSymbolExpression(char *name, const char *expr, const char **next = NULL);
 void UnsetSymbol(char *name);
+void WriteSymbols(const char *filename);
 
 #endif	// _SYMBOL_H

@@ -23,11 +23,11 @@ extern const char delim_chars[];
  * Prototypes
  */
 char *strskipspace(char *s);
-int strword(char *s, char *lookfor);
+int strword(const char *s, const char *lookfor);
 int strreplace(char *s, char *from, char *to);
 int HexValue(char c);
-char ParseStringChar(char *&p);
-void ParseString(char *q, char *&p);
+char ParseStringChar(const char *&p);
+void ParseString(char *q, const char *&p);
 
 /*
  * isalpha2

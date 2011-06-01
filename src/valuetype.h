@@ -20,7 +20,7 @@ public:
 	//ValueType & operator = (char *s);
 	//ValueType & operator = (long i);
 	//void setString(char *s);
-	ValueType(char *s);
+	ValueType(const char *s);
 	ValueType(long i);
 	void Free();
 	~ValueType();

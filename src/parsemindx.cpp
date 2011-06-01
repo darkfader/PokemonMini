@@ -18,9 +18,9 @@ int outputs = 0;
 
 Instruction instruction;
 
-char *rb[4] = {"A","B","L","H"};
-char *rw[6] = {"BA","HL","X","Y","X1","X2"};
-int rwnum[6] = {0, 1, 2, 3, 2, 3};
+const char *rb[4] = {"A","B","L","H"};
+const char *rw[6] = {"BA","HL","X","Y","X1","X2"};
+const int rwnum[6] = {0, 1, 2, 3, 2, 3};
 
 int line;
 int extended = 0xAA;
@@ -68,7 +68,7 @@ char *STRLWR(char *a)
 /**
  * replace first occurrence in a string
  */
-int strreplace(char *s, char *from, char *to)
+int strreplace(char *s, const char *from, const char *to)
 {
 	char tmp[BUFSIZE];
 	char *p = strstr(s, from);
@@ -88,7 +88,7 @@ int strreplace(char *s, char *from, char *to)
 /*
  * strreplacenum
  */
-int strreplacenum(char *s, char *from, int to)
+int strreplacenum(char *s, const char *from, int to)
 {
 	char tmp[BUFSIZE];
 	char *p = strstr(s, from);
@@ -259,7 +259,7 @@ void DoCalc(char *a, char *b)
 		p += sprintf(p, "%s\"", instruction.fmt);
 		//for (int i=0; i<30-(p-s); i++) { p += sprintf(p, " "); }
 		p += sprintf(p, ",0x%02X,0x%02X,%d,%d", instruction.flags, instruction_fixed, instruction.size, instruction.argnum);
-		for (int i=0; i<instruction.argnum; i++)
+		for (unsigned int i=0; i<instruction.argnum; i++)
 		{
 			p += sprintf(p, ",%d,%d", instruction.argInfo[i].shift, instruction.argInfo[i].flags);
 		}

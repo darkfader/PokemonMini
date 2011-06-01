@@ -4,7 +4,7 @@
 #include "macrolist.h"
 #include "symbol.h"
 
-MacroList::MacroList(char *name)
+MacroList::MacroList(const char *name)
 {
 	this->name = strdup(name);
 	next = 0;
@@ -30,7 +30,7 @@ int macro_id;		// reset to 0 for each pass
 /*
  * FindMacro
  */
-MacroList *FindMacro(char *name)
+MacroList *FindMacro(const char *name)
 {
 	MacroList *m = macros;
 	while (m) 
@@ -44,7 +44,7 @@ MacroList *FindMacro(char *name)
 /*
  * NewMacro
  */
-MacroList *NewMacro(char *name)
+MacroList *NewMacro(const char *name)
 {
 	if (!macros) return (macros = new MacroList(name));
 	MacroList *m = macros;
@@ -57,7 +57,7 @@ MacroList *NewMacro(char *name)
  * MacroExecute
  * ************** needs rewrite ****************
  */
-bool MacroExecute(char *line)
+bool MacroExecute(const char *line)
 {
 	char *_line = strdup(line);
 	
@@ -80,7 +80,7 @@ EEKS{printf("at %p '%s'\n", paramname, paramvalue);}
 
 		while (paramname && paramvalue)
 		{
-EEKS{printf("paramname: '%s', paramvalue: '%s'\n", paramname, paramvalue);}
+EEKS{printf("paramname: '%s', paramvalue: '%s'\n", paramname->string, paramvalue);}
 			if (paramname->string[0] == '$')		// force string
 			{
 				char *paramvalue2 = strtok(paramvalue, delim_chars);	// take string until delimiter
@@ -92,7 +92,7 @@ EEKS{printf("string param: '%s'\n", paramvalue2);}
 			}
 			else	// expression
 			{
-				SetSymbolExpression(paramname->string, paramvalue, &paramvalue);
+				SetSymbolExpression(paramname->string, paramvalue, (const char **)&paramvalue);
 			}
 			paramname = paramname->next;
 		}

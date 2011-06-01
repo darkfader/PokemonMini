@@ -2,9 +2,9 @@ PMAS_VERSION := 15
 MINDX_ZIP := "http://pokeme.shizzle.it/infos/PM Dev/Assemblers/mindx_v14.zip"
 VERSION2 :=
 #PATH := .:/bin:/usr/bin:$(PATH)
-CFLAGS := -DVERSION="\"0.$(PMAS_VERSION)$(VERSION2)\""
+CFLAGS := -Wall -DVERSION="\"0.$(PMAS_VERSION)$(VERSION2)\""
 LD := $(CXX)
-LDFLAGS := 
+LDFLAGS :=
 COMPARE = diff -q --binary
 PMDIS = ./pmdis
 OUTPUTS = pmas cpu/pm.s
@@ -69,7 +69,7 @@ debug: $(OUTPUTS)
 .PHONY: release
 release: CFLAGS += -O3
 #-march=i586 -mcpu=i686 -O3 -fomit-frame-pointer
-release: LDFLAGS += -s
+release: LDFLAGS +=							#-Wl,-s
 release: $(OUTPUTS)
 
 .PHONY: debugtest

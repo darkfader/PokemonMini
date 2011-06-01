@@ -67,7 +67,7 @@ void PlaceInstruction(Instruction *instruction, unsigned int &addr, char args[2]
 
 	//bool outofrange = false;
 
-	for (int j=0; j<instruction->argnum; j++)
+	for (unsigned int j=0; j<instruction->argnum; j++)
 	{
 		int argflags = instruction->argInfo[j].flags;
 		int arg = EvaluateExpression(args[j]);	//argflags & ARGFLAG_SRCMASK];
@@ -91,7 +91,7 @@ void PlaceInstruction(Instruction *instruction, unsigned int &addr, char args[2]
 			{
 				//outofrange = true; break;
 	
-				char *sign = "unsigned";
+				const char *sign = "unsigned";
 				if (argflags & ARGFLAG_S) sign = "signed";
 				eprintf("Operand(s) out of range. Expected %s %d bits value.\n", sign, argflags & ARGFLAG_BITS);
 				addr += instruction->size;
@@ -104,7 +104,7 @@ void PlaceInstruction(Instruction *instruction, unsigned int &addr, char args[2]
 		opcode |= (arg & ~invbitmask) << instruction->argInfo[j].shift;
 	}
 
-	for (int j=0; j<instruction->size; j++)
+	for (unsigned int j=0; j<instruction->size; j++)
 	{
 		reloc_data[addr++] = opcode; opcode >>= 8;
 	}
@@ -119,7 +119,7 @@ bool TryInstruction(Instruction *instruction, char *line, int &skip, bool place,
 	int incskip = 1;	// we can skip comparing until first space (arguments lengths are unknown)
 	
 	static char args[MAX_ARGS][TMPSIZE];			// operand arguments
-	int argnumfound = 0;
+	unsigned int argnumfound = 0;
 
 	char *p = line + skip;
 	char *fmt = instruction->fmt + skip;

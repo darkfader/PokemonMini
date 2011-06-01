@@ -20,12 +20,12 @@ struct Symbol;
 /*
  *
  */
-Symbol *FindSymbol(char *name);
-ValueType GetSymbolValue(char *name);
-void SetSymbolValue(char *name, ValueType value);
-void SetSymbolExpression(char *name, char *expr, char **next = 0);
-ValueType EvaluateExpression(char *input, char **next = 0);
+//Symbol *FindSymbol(const char *name);
+//ValueType GetSymbolValue(const char *name);
+//void SetSymbolValue(const char *name, ValueType value);
+//void SetSymbolExpression(const char *name, const char *expr, char **next = 0);
+ValueType EvaluateExpression(const char *input, const char **next = 0);
 unsigned char ParseString(char *&p);
-void WriteSymbols(char *filename);
+//void WriteSymbols(const char *filename);
 
 #endif	// _EVAL_H

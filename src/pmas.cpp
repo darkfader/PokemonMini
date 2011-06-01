@@ -91,7 +91,7 @@ void eprintf(const char *fmt, ...)
 	char errormsg[TMPSIZE];
 	va_list marker;
 	va_start(marker, fmt);
-	int r = vsprintf(errormsg, fmt, marker);
+	/*int r =*/ vsprintf(errormsg, fmt, marker);
 	va_end(marker);
 	char *p;
 	if ((p = strchr(file->origline, '\r'))) *p = 0;
@@ -279,7 +279,7 @@ EEKS{printf("new macro at %p\n", current_macro);}
 	else if (DIRECTIVE("db", PARSE_OTHER_DIRECTIVES))
 	{
 EEKS{printf("%d %s\n", parse_directives, line);}
-		char *p = strskipspace(line);
+		const char *p = strskipspace(line);
 		
 		while (p)
 		{
@@ -305,7 +305,7 @@ EEKS{printf("'%s'\n", p);}
 	}
 	else if (DIRECTIVE("dw", PARSE_OTHER_DIRECTIVES))
 	{
-		char *p = strskipspace(line);
+		const char *p = strskipspace(line);
 		//p = strtok(p, ",");
 		while (p)
 		{
@@ -321,7 +321,7 @@ EEKS{printf("'%s'\n", p);}
 	}
 	else if (DIRECTIVE("dd", PARSE_OTHER_DIRECTIVES))
 	{
-		char *p = strskipspace(line);
+		const char *p = strskipspace(line);
 		//p = strtok(p, ",");
 		while (p)
 		{
@@ -341,7 +341,7 @@ EEKS{printf("'%s'\n", p);}
 	{
 		char *s = strskipspace(line);
 		char *name = strtok(s, delim_chars);
-		char *expr = strtok(0, "");
+		const char *expr = strtok(0, "");
 		if (DIRECTIVE("define", PARSE_OTHER_DIRECTIVES)) if (!expr) expr = "1";		// value is optional for .define
 		if (!expr) expr = "";
 EEKS{printf("equ '%s'='%s'\n", name, expr);}
@@ -369,14 +369,14 @@ EEKS{printf("verify "); GetSymbolValue(name).print();}
 	}
 	else if (DIRECTIVE("instruction", PARSE_OTHER_DIRECTIVES))
 	{
-		char *p = strskipspace(line);
+		const char *p = strskipspace(line);
 		Instruction *instruction = new Instruction;
 		instruction->fmt = strdup(EvaluateExpression(p, &p).getString());
 		instruction->flags = EvaluateExpression(p, &p);
 		instruction->fixed = EvaluateExpression(p, &p);
 		instruction->size = EvaluateExpression(p, &p);
 		instruction->argnum = EvaluateExpression(p, &p);
-		for (int i=0; i<instruction->argnum; i++)
+		for (unsigned int i=0; i<instruction->argnum; i++)
 		{
 			instruction->argInfo[i].shift = EvaluateExpression(p, &p);
 			instruction->argInfo[i].flags = EvaluateExpression(p, &p);
@@ -411,7 +411,7 @@ EEKS{printf("verify "); GetSymbolValue(name).print();}
 	}
 	else if (DIRECTIVE("ds", PARSE_OTHER_DIRECTIVES))
 	{
-		char *next;
+		const char *next;
 		int size = EvaluateExpression(strskipspace(line), &next);
 		int fill = next ? (int)EvaluateExpression(next) : -1;
 
@@ -437,13 +437,15 @@ EEKS{printf("'%s' '%s'\n", strskipspace(line), s);}
 	}
 	else if (DIRECTIVE("include", PARSE_OTHER_DIRECTIVES))
 	{
-		char name[TMPSIZE], *p = strskipspace(line);
+		char name[TMPSIZE];
+		const char *p = strskipspace(line);
 		ParseString(name, p);
 		ParseFile(name);
 	}
 	else if (DIRECTIVE("incbin", PARSE_OTHER_DIRECTIVES))
 	{
-		char name[TMPSIZE], *p = strskipspace(line);
+		char name[TMPSIZE];
+		const char *p = strskipspace(line);
 		ParseString(name, p);
 		FILE *fb = fopen(name, "rb");
 
@@ -469,7 +471,7 @@ EEKS{printf("'%s' '%s'\n", strskipspace(line), s);}
 //printf("printf %d %d\n", parse_directives, PARSE_OTHER_DIRECTIVES);
 		if (pass == 2)
 		{
-			char *inp = strskipspace(line);
+			const char *inp = strskipspace(line);
 			ValueType n = EvaluateExpression(inp, &inp);
 			char *fmtp = (char *)n.getString();
 			while (fmtp && *fmtp)
@@ -772,9 +774,9 @@ int main(int argc, char *argv[])
 	}
 
 	// parse parameters
-	char *inputfile = 0;
-	char *outputfile = 0;
-	char *symbolfile = 0;
+	const char *inputfile = NULL;
+	const char *outputfile = NULL;
+	const char *symbolfile = NULL;
 	bool newstyleparams = false;
 	bool oldstyleparams = false;
 	for (int a=1; a<argc; a++)

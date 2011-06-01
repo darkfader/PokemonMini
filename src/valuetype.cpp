@@ -31,7 +31,7 @@ ValueType::ValueType(const ValueType &rhs)
 	//print();
 }
 
-ValueType::ValueType(char *s) { this->s = strdup(s); i=0; HMMM(+1); }
+ValueType::ValueType(const char *s) { this->s = strdup(s); i=0; HMMM(+1); }
 ValueType::ValueType(long i) { s = 0; this->i = i; }
 
 
@@ -129,7 +129,7 @@ ValueType ValueType::operator + (const ValueType &rhs)
 	{
 		char tmp[TMPSIZE];
 		strcpy(tmp, s);
-		sprintf(tmp, "%d", rhs.i);
+		sprintf(tmp, "%ld", rhs.i);
 		return ValueType(tmp);
 	}
 	else
@@ -163,7 +163,7 @@ COMPARE_OPERATION(<=);
 void ValueType::print() const
 {
 	if (!s)
-		printf("value=%d\n", i);
+		printf("value=%ld\n", i);
 	else
 		printf("value='%s'\n", s);
 }
