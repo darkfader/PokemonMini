@@ -12,7 +12,7 @@
  */
 
 #define BUFSIZE			1024
-#define MAX_OUTPUTS		1024
+#define MAX_OUTPUTS		4096
 char *output[MAX_OUTPUTS];
 int outputs = 0;
 

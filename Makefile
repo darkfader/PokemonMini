@@ -1,34 +1,66 @@
-VERSION := 15
+PMAS_VERSION := 15
 MINDX_ZIP := "http://pokeme.shizzle.it/infos/PM Dev/Assemblers/mindx_v14.zip"
 VERSION2 :=
-PATH := .:/bin:/usr/bin:$(PATH)
-#CC := $(CXX)
+#PATH := .:/bin:/usr/bin:$(PATH)
+CFLAGS := -DVERSION="\"0.$(PMAS_VERSION)$(VERSION2)\""
 LD := $(CXX)
-CFLAGS := -DVERSION="\"0.$(VERSION)$(VERSION2)\""
-#-march=i586 -mcpu=i686 -O3 -fomit-frame-pointer
 LDFLAGS := 
 COMPARE = diff -q --binary
-PMDIS = pmdis
-OUTPUTS = obj/ pmas cpu/pm.s
-# pmdis
+PMDIS = ./pmdis
+OUTPUTS = pmas cpu/pm.s
+#OUTPUTS += pmdis  #hmm.. need mindx.h
+
+########
+# help #
+########
 
 .PHONY: help
 help:
-	@echo "Targets: release debug releasetest debugtest clean zap"
+	@echo "Command goals:"
+	@echo "  help          This list."
+	@echo "  release       Build release version of pmas."
+	@echo "  debug         Build debug version of pmas."
+	@echo "  releasetest   Run some tests."
+	@echo "  debugtest     Run some tests under gdb to find bugs."
+	@echo "  clean         Delete output and intermediate files."
+	@echo "  zap           Delete intermediate files."
 
-../pmas-0.$(VERSION).tar.gz: zap
+####################
+# dependency stuff #
+####################
+
+SUFFIXES += .d
+NODEPS:=clean zap
+SOURCES:=$(shell find src/ -name "*.cpp")
+DEPFILES:=$(patsubst src/%.cpp,obj/%.d,$(SOURCES))
+ifeq (0, $(words $(findstring $(MAKECMDGOALS), $(NODEPS))))
+	-include $(DEPFILES)
+endif
+
+obj/%.d: src/%.cpp
+	$(CXX) $(CXXFLAGS) -MM -MT $(patsubst src/%.cpp,obj/%.o,$<) $< > $@
+
+###########
+# release #
+###########
+
+../pmas-0.$(PMAS_VERSION).tar.gz: zap
 	tar -czf $@ *
 
-../pmas-0.$(VERSION).zip: release releasetest clean
+../pmas-0.$(PMAS_VERSION).zip: release releasetest clean
 	zip - -q -9 -r . -x ./src/ ./obj/ ./src/* ./obj/* > $@
 
-obj/:
-	mkdir obj
-
 .PHONY: upload
-upload: ../pmas-0.$(VERSION).tar.gz ../pmas-0.$(VERSION).zip
+upload: ../pmas-0.$(PMAS_VERSION).tar.gz ../pmas-0.$(PMAS_VERSION).zip
 	$(foreach file,$+,$(MAKE) $(file);)
 	$(foreach file,$+,curl --url ftp://upload.sourceforge.net/incoming/ --upload-file $(file);)
+
+########
+# misc #
+########
+
+obj:
+	mkdir obj
 
 .PHONY: debug
 debug: CFLAGS += -g -DDEBUG
@@ -36,7 +68,8 @@ debug: $(OUTPUTS)
 
 .PHONY: release
 release: CFLAGS += -O3
-#release: LDFLAGS += -s
+#-march=i586 -mcpu=i686 -O3 -fomit-frame-pointer
+release: LDFLAGS += -s
 release: $(OUTPUTS)
 
 .PHONY: debugtest
@@ -45,7 +78,7 @@ debugtest: debug
 	$(PMAS) test/test.s test/test.min
 
 .PHONY: releasetest
-releasetest: PMAS = pmas
+releasetest: PMAS = ./pmas
 releasetest: release test/readme.min test/test1.min test/test2.min test/opcodes1.min test/opcodes2.min test/opcodes3.min
 	$(COMPARE) test/opcodes1.min test/opcodes2.min
 	$(COMPARE) test/opcodes1.min test/opcodes3.min
@@ -56,11 +89,22 @@ releasetest: release test/readme.min test/test1.min test/test2.min test/opcodes1
 #	$(PMAS) test/opcodes2.dis.s test/opcodes2.as.min test/opcodes2.as.sym
 #	$(COMPARE) test/opcodes2.min test/opcodes2.as.min
 
-pmas: obj/pmas.o obj/eval.o obj/misc.o obj/symbol.o obj/stack.o obj/valuetype.o obj/macrolist.o obj/instruction.o obj/mem.o
-	$(LD) $(LDFLAGS) -o $@ $+
+##############
+# pmas/pmdis #
+##############
 
-pmdis: obj/pmdis.o
-	$(LD) $(LDFLAGS) -o $@ $+
+PMAS_SOURCES := src/pmas.cpp src/eval.cpp src/misc.cpp src/symbol.cpp src/stack.cpp src/valuetype.cpp src/macrolist.cpp src/instruction.cpp src/mem.cpp
+PMAS_OBJECTS := $(patsubst src/%.cpp,obj/%.o,$(PMAS_SOURCES))
+
+pmas: obj $(PMAS_OBJECTS)
+	$(LD) $(LDFLAGS) -o $@ $(filter %.o,$+)
+
+pmdis: obj obj/pmdis.o
+	$(LD) $(LDFLAGS) -o $@ $(filter %.o,$+)
+
+#########
+# tests #
+#########
 
 test/%.min: test/%.s pmas
 	$(PMAS) $< $@ $(@:min=sym)
@@ -68,27 +112,26 @@ test/%.min: test/%.s pmas
 test/%.min: test/%.S pmas
 	$(CPP) $< | $(PMAS) - $@ $(@:min=sym)
 
-src/eval.cpp:: src/*.h
-	touch -m $@
-
-src/pmas.cpp:: src/*.h
-	touch -m $@
-
-src/pmdis.cpp:: src/*.h
-	touch -m $@
+#########
+# mindx #
+#########
 
 cpu/pm.s: cpu/mindx.txt parsemindx
-	parsemindx cpu/mindx.txt cpu/pm.s highlight.tmp
+	./parsemindx cpu/mindx.txt cpu/pm.s highlight.tmp
 	(cat cpu/pm_wordfile_head.txt; sort -u highlight.tmp) > cpu/pm_wordfile.txt
 	rm highlight.tmp
 
 parsemindx: src/parsemindx.cpp
-	$(CXX) $(CFLAGS) -o $@ $<
+	$(CXX) $(CFLAGS) -o $@ $+
 
 cpu/mindx.txt:
 	wget -O mindx.zip $(MINDX_ZIP)
 	unzip -o mindx.zip cpu/mindx.txt
 	rm mindx.zip
+
+########
+# misc #
+########
 
 obj/%.o: src/%.cpp
 	$(CXX) $(CFLAGS) -c -o $@ $<
