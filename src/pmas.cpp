@@ -53,6 +53,8 @@ typedef Stack<FileType> FileStack;
 FileStack fileStack;
 */
 
+#define MAX_CONDSTACK			64
+
 #define MAX_INCLUDEPATHS		32
 char *includepaths[MAX_INCLUDEPATHS];		// no trailing slashes
 int includepaths_count = 0;
@@ -116,8 +118,9 @@ int option_farjump;			// jumps to non-local labels and without suffix default to
 int option_word;			// *NOT WORKING YET* non-jumps without B or W suffix default to word? (default = 0)
 int option_fill;			// byte to fill uninitialized data with (default = 0xFF)
 
-bool condition;				// conditional assembling
-bool condition_met;			// conditional already met?
+int condition_stack;			// condition stack level
+bool condition[MAX_CONDSTACK];		// conditional assembling
+bool condition_met[MAX_CONDSTACK];	// conditional already met?
 char locallabelprefix[TMPSIZE];		// prefix for macro/local labels
 int repeat;					// macro repeat count
 
@@ -209,37 +212,64 @@ EEKS{printf("new macro at %p\n", current_macro);}
 
 	/*
 	 * conditional directives
-	 * TODO: make it recursive (stack)
 	 */
 
 	else if (DIRECTIVE("if", PARSE_COND_DIRECTIVES))
 	{
-		condition = EvaluateExpression(strskipspace(line));
-		condition_met = condition;
-		parse_directives = condition ? PARSE_ALL_DIRECTIVES : PARSE_COND_DIRECTIVES;
+		condition_stack++;
+		if (condition_stack >= MAX_CONDSTACK) { eprintf("Conditions stack exceeded.\n"); eexit(); }
+		condition[condition_stack] = EvaluateExpression(strskipspace(line));
+		condition_met[condition_stack] = condition[condition_stack];
+		if (!condition[condition_stack-1]) condition[condition_stack] = false;	// parent must be true
+		parse_directives = condition[condition_stack] ? PARSE_ALL_DIRECTIVES : PARSE_COND_DIRECTIVES;
 	}
-	else if (DIRECTIVE("elsif", PARSE_COND_DIRECTIVES))
+	else if (DIRECTIVE("elif", PARSE_COND_DIRECTIVES) || DIRECTIVE("elsif", PARSE_COND_DIRECTIVES) /*|| DIRECTIVE("elseif", PARSE_COND_DIRECTIVES)*/)
 	{
-		if (condition_met)
+		if (condition_stack <= 0) { eprintf(".elif without .if\n"); eexit(); }	// NOTE: .elif was added later
+		if (condition_met[condition_stack])
 		{
-			condition = false;
+			condition[condition_stack] = false;
 		}
 		else
 		{
-			condition = EvaluateExpression(strskipspace(line));
-			condition_met |= condition;
+			condition[condition_stack] = EvaluateExpression(strskipspace(line));
+			condition_met[condition_stack] |= condition[condition_stack];
 		}
-		parse_directives = condition ? PARSE_ALL_DIRECTIVES : PARSE_COND_DIRECTIVES;
+		if (!condition[condition_stack-1]) condition[condition_stack] = false;	// parent must be true
+		parse_directives = condition[condition_stack] ? PARSE_ALL_DIRECTIVES : PARSE_COND_DIRECTIVES;
 	}
 	else if (DIRECTIVE("else", PARSE_COND_DIRECTIVES))
 	{
-		condition = !condition_met;
-		parse_directives = condition ? PARSE_ALL_DIRECTIVES : PARSE_COND_DIRECTIVES;
+		if (condition_stack <= 0) { eprintf(".else without .if\n"); eexit(); }
+		condition[condition_stack] = !condition_met[condition_stack];
+		if (!condition[condition_stack-1]) condition[condition_stack] = false;	// parent must be true
+		parse_directives = condition[condition_stack] ? PARSE_ALL_DIRECTIVES : PARSE_COND_DIRECTIVES;
 	}
 	else if (DIRECTIVE("endif", PARSE_COND_DIRECTIVES))
 	{
-		condition = true;
-		parse_directives = condition ? PARSE_ALL_DIRECTIVES : PARSE_COND_DIRECTIVES;
+		if (condition_stack <= 0) { eprintf(".endif without .if\n"); eexit(); }
+		condition_stack--;
+		parse_directives = condition[condition_stack] ? PARSE_ALL_DIRECTIVES : PARSE_COND_DIRECTIVES;
+	}
+	else if (DIRECTIVE("ifdef", PARSE_COND_DIRECTIVES))
+	{
+		condition_stack++;
+		if (condition_stack >= MAX_CONDSTACK) { eprintf("Conditions stack exceeded.\n"); eexit(); }
+		char *defname = strtok(strskipspace(line), delim_chars);
+		condition[condition_stack] = FindSymbol(defname) ? true : false;
+		condition_met[condition_stack] = condition[condition_stack];
+		if (!condition[condition_stack-1]) condition[condition_stack] = false;	// parent must be true
+		parse_directives = condition[condition_stack] ? PARSE_ALL_DIRECTIVES : PARSE_COND_DIRECTIVES;
+	}
+	else if (DIRECTIVE("ifndef", PARSE_COND_DIRECTIVES))
+	{
+		condition_stack++;
+		if (condition_stack >= MAX_CONDSTACK) { eprintf("Conditions stack exceeded.\n"); eexit(); }
+		char *defname = strtok(strskipspace(line), delim_chars);
+		condition[condition_stack] = FindSymbol(defname) ? false : true;
+		condition_met[condition_stack] = condition[condition_stack];
+		if (!condition[condition_stack-1]) condition[condition_stack] = false;	// parent must be true
+		parse_directives = condition[condition_stack] ? PARSE_ALL_DIRECTIVES : PARSE_COND_DIRECTIVES;
 	}
 
 	/*
@@ -307,11 +337,13 @@ EEKS{printf("'%s'\n", p);}
 			//p = strtok(0, ",");
 		}
 	}
-	else if (DIRECTIVE("equ", PARSE_OTHER_DIRECTIVES) || DIRECTIVE("set", PARSE_OTHER_DIRECTIVES))
+	else if (DIRECTIVE("equ", PARSE_OTHER_DIRECTIVES) || DIRECTIVE("set", PARSE_OTHER_DIRECTIVES) || DIRECTIVE("define", PARSE_OTHER_DIRECTIVES))
 	{
 		char *s = strskipspace(line);
 		char *name = strtok(s, delim_chars);
 		char *expr = strtok(0, "");
+		if (DIRECTIVE("define", PARSE_OTHER_DIRECTIVES)) if (!expr) expr = "1";		// value is optional for .define
+		if (!expr) expr = "";
 EEKS{printf("equ '%s'='%s'\n", name, expr);}
 		SetSymbolExpression(name, expr);
 EEKS{printf("verify "); GetSymbolValue(name).print();}
@@ -329,7 +361,7 @@ EEKS{printf("verify "); GetSymbolValue(name).print();}
 		else if (!strcmp(name, "word")) option_word = value;
 		else if (!strcmp(name, "fill")) option_fill = value;
 	}
-	else if (DIRECTIVE("unset", PARSE_OTHER_DIRECTIVES))
+	else if (DIRECTIVE("unset", PARSE_OTHER_DIRECTIVES) || DIRECTIVE("undefine", PARSE_OTHER_DIRECTIVES))
 	{
 		char *s = strskipspace(line);
 		char *name = strtok(s, delim_chars);
@@ -511,7 +543,7 @@ void ParseLabel()	//File *file)
 {
 	char *line = file->line;
 
-	if (!condition)
+	if (!condition[condition_stack])
 	{
 	}
 	else if (current_macro)
@@ -557,7 +589,7 @@ EEKS{printf("label %06X\n", addr);}
  */
 void ParseInstruction()		//File *file)
 {
-	if (!condition)
+	if (!condition[condition_stack])
 	{
 		return;
 	}
@@ -680,7 +712,15 @@ void ParseFile(const char *filename)
 				file->line_num++;
 				ParseLine();
 			}
-		
+
+			if (condition_stack != 0) {
+				file->line_num++;
+				strcpy(file->origline, "");
+				eprintf(".endif missing\n");
+				eexit();
+			}
+
+
 			FREE(file->filename);
 			fclose(file->fi);
 			//currentfile--;
@@ -818,7 +858,8 @@ int main(int argc, char *argv[])
 		parse_directives = PARSE_ALL_DIRECTIVES;
 		macro_id = 0;
 		repeat = 0;
-		condition = true;
+		condition_stack = 0;
+		condition[condition_stack] = true;
 		strcpy(locallabelprefix, "");
 		
 		FreeInstructions();
