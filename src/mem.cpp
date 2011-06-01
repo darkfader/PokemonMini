@@ -10,7 +10,7 @@ Memory is divided into parts
 #include "pmas.h"
 #include "mem.h"
 
-#define MEMSIZE			1024*1024		// max output size
+#define MEMSIZE			2*1024*1024		// max output size
 #define	PARTSIZE		256
 
 int reloc_offset;
