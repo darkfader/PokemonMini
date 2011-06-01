@@ -1,4 +1,4 @@
-PMAS_VERSION := 15
+PMAS_VERSION := 16
 MINDX_ZIP := "http://pokeme.shizzle.it/infos/PM Dev/Assemblers/mindx_v14.zip"
 VERSION2 :=
 #PATH := .:/bin:/usr/bin:$(PATH)
