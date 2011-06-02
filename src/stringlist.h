@@ -8,13 +8,13 @@ struct StringList
 	char *string;
 	StringList *next;
 
-	StringList(char *string)
+	StringList(const char *string)
 	{
 		this->string = strdup(string);
 		next = 0;
 	}
 	
-	void Add(char *string)
+	void Add(const char *string)
 	{
 		StringList *p = this;
 		while (p->next) p = p->next;

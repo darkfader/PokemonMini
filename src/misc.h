@@ -22,7 +22,7 @@ extern const char delim_chars[];
 /*
  * Prototypes
  */
-char *strskipspace(char *s);
+char *strskipspace(char *s);		// skip current word and followed space
 int strword(const char *s, const char *lookfor);
 int strreplace(char *s, char *from, char *to);
 int HexValue(char c);
@@ -77,4 +77,14 @@ inline bool isendline(char c)
 	return (c == '#') || (c == ';') || (c == '\r') || (c == '\n') || (c == 0);
 }
 
+/*
+ * strltrim
+ */
+inline const char *strltrim(const char *line)
+{
+	while (isspace2(*line)) line++;
+	return line;
+}
+
 #endif	// _MISC_H
+

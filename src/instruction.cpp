@@ -275,9 +275,10 @@ EEKS{printf("%c %s\n", *p, fmt);}
 /*
  * TryInstructions
  */
-bool TryInstructions(char *line)
+bool TryInstructions(const char *file_line)
 {
 	int skip = 0;
+	char *line = strdup(file_line);			// TODO: hmm... TryInstruction alters line
 	
 	Instruction *bestintruction = 0;
 	int bestmatchlevel = 0;
@@ -305,8 +306,10 @@ bool TryInstructions(char *line)
 		skip = 0;
 		int matchlevel;
 		TryInstruction(bestintruction, line, skip, true, &matchlevel);
+		free(line);
 		return true;
 	}
 
+	free(line);
 	return false;
 }

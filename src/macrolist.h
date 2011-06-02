@@ -17,8 +17,8 @@ struct MacroList
 	MacroList *next;
 
 	MacroList(const char *name);
-	void AddParameter(char *string);
-	void AddLine(char *string);
+	void AddParameter(const char *string);
+	void AddLine(const char *string);
 };
 
 /*

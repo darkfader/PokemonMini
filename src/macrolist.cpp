@@ -12,13 +12,13 @@ MacroList::MacroList(const char *name)
 	lines = 0;
 }
 
-void MacroList::AddParameter(char *string)
+void MacroList::AddParameter(const char *string)
 {
 EEKS{printf("AddParameters '%s'\n", string);}
 	if (!parameters) parameters = new StringList(string); else parameters->Add(string);
 }
 
-void MacroList::AddLine(char *string)
+void MacroList::AddLine(const char *string)
 {
 	if (!lines) lines = new StringList(string); else lines->Add(string);
 }
@@ -112,8 +112,8 @@ EEKS{printf("string param: '%s'\n", paramvalue2);}
 			strcpy(tmp, s->string);
 			strcpy(file->origline, s->string);
 EEKS{printf("exec %s\n", tmp);}
-			file->line = tmp;
-			ParseLine();
+//			file->line = tmp;
+			ParseLine(tmp);
 			s = s->next;
 		}
 		
@@ -122,3 +122,4 @@ EEKS{printf("exec %s\n", tmp);}
 	free(_line);
 	return m ? true : false;
 }
+

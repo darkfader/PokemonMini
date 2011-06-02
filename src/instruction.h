@@ -77,7 +77,7 @@ extern Instruction *instructions;
 /*
  * Prototypes
  */
-bool TryInstructions(char *line);
+bool TryInstructions(const char *file_line);
 //bool SelectCpu(const char *name);
 void AddInstruction(Instruction *instruction);
 void FreeInstructions();

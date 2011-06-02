@@ -13,7 +13,7 @@ Symbol *symbols = 0;
 /*
  *
  */
-Symbol::Symbol(char *name)
+Symbol::Symbol(const char *name)
 {
 	this->name = strdup(name);
 	left = right = 0;
@@ -76,7 +76,7 @@ Symbol *FindSymbol(const char *name)
 /*
  * CreateSymbol
  */
-Symbol *CreateSymbol(char *name)
+Symbol *CreateSymbol(const char *name)
 {
 	Symbol *s = symbols;
 	if (!s)
@@ -130,7 +130,7 @@ EEKS{printf("GetSymbolValue %s, ", name); s->value.print();}
 /*
  * SetSymbolValue
  */
-void SetSymbolValue(char *name, ValueType value)
+void SetSymbolValue(const char *name, ValueType value)
 {
 EEKS{printf("SetSymbolValue %s, ", name); value.print();}
 

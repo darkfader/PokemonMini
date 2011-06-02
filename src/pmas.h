@@ -15,7 +15,7 @@ struct File
 	FILE *fi;
 	int line_num;
 	char *filename;
-	char *line;
+	//char *line;
 	char origline[TMPSIZE];		// set in ParseLine, used to print error line
 };
 
@@ -39,9 +39,9 @@ extern File *file;
  * Prototypes
  */
 void ParseFile(const char *filename);
-void ParseLine();	//char *line);
+void ParseLine(const char *file_line);
 void eprintf(const char *fmt, ...);
 void eexit();
-void MacroLine();	//char *line);
+void MacroLine(const char *file_line);
 
 #endif	// _PMAS_H

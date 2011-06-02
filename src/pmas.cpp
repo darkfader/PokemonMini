@@ -147,9 +147,9 @@ int parse_directives;		// what to parse
  * ParseDirective
  * Note: macro directives are handled before recording
  */
-void ParseDirective()	//File *file)
+void ParseDirective(const char *cline)
 {
-	char *line = file->line + 1;
+	char *line = strdup(strltrim(cline) + 1);	// skip '.' and allow strtok
 //printf("'%s'\n", file->line);
 //printf("'%s'\n", line);
 	bool valid_directive = false;
@@ -176,8 +176,8 @@ void ParseDirective()	//File *file)
 	 */
 	if (current_macro)
 	{
-		MacroLine();		// record with period
-		return;				// only process macro ending directives
+		MacroLine(cline);		// record full line
+		goto exit;				// only process macro ending directives
 	}
 
 	/*
@@ -185,7 +185,7 @@ void ParseDirective()	//File *file)
 	 */
 	if (DIRECTIVE("macro", PARSE_MACRO_DIRECTIVES))
 	{
-		char *name = strtok(strskipspace(line), delim_chars);
+		char *name = strtok((char *)strskipspace(line), delim_chars);
 		current_macro = FindMacro(name);
 		if (pass == 1)
 		{
@@ -255,7 +255,7 @@ EEKS{printf("new macro at %p\n", current_macro);}
 	{
 		condition_stack++;
 		if (condition_stack >= MAX_CONDSTACK) { eprintf("Conditions stack exceeded.\n"); eexit(); }
-		char *defname = strtok(strskipspace(line), delim_chars);
+		char *defname = strtok((char *)strskipspace(line), delim_chars);
 		condition[condition_stack] = FindSymbol(defname) ? true : false;
 		condition_met[condition_stack] = condition[condition_stack];
 		if (!condition[condition_stack-1]) condition[condition_stack] = false;	// parent must be true
@@ -265,7 +265,7 @@ EEKS{printf("new macro at %p\n", current_macro);}
 	{
 		condition_stack++;
 		if (condition_stack >= MAX_CONDSTACK) { eprintf("Conditions stack exceeded.\n"); eexit(); }
-		char *defname = strtok(strskipspace(line), delim_chars);
+		char *defname = strtok((char *)strskipspace(line), delim_chars);
 		condition[condition_stack] = FindSymbol(defname) ? false : true;
 		condition_met[condition_stack] = condition[condition_stack];
 		if (!condition[condition_stack-1]) condition[condition_stack] = false;	// parent must be true
@@ -428,12 +428,12 @@ EEKS{printf("verify "); GetSymbolValue(name).print();}
 	{
 		ValueType n = EvaluateExpression(strskipspace(line));
 		const char *s = n.getString();
-		if (!s) { eprintf("String expression expected.\n"); return; }
+		if (!s) { eprintf("String expression expected.\n"); goto exit; }
 EEKS{printf("'%s' '%s'\n", strskipspace(line), s);}
 		char tmp[TMPSIZE];
 		strcpy(tmp, s);
-		file->line = tmp;
-		ParseLine();
+		//file->line = tmp;
+		ParseLine(tmp);			// TODO: parse more lines?
 	}
 	else if (DIRECTIVE("include", PARSE_OTHER_DIRECTIVES))
 	{
@@ -532,6 +532,8 @@ EEKS{printf("'%s' '%s'\n", strskipspace(line), s);}
 	{
 		eprintf("Unknown directive.\n");
 	}
+exit:
+	free(line);
 }
 
 /****************************************************************************\
@@ -541,19 +543,18 @@ EEKS{printf("'%s' '%s'\n", strskipspace(line), s);}
 /*
  * ParseLabel
  */
-void ParseLabel()	//File *file)
+void ParseLabel(const char *cline)
 {
-	char *line = file->line;
-
 	if (!condition[condition_stack])
 	{
 	}
 	else if (current_macro)
 	{
-		MacroLine();
+		MacroLine(cline);
 	}
 	else
 	{
+		char *line = strdup(strltrim(cline));
 		char *p = strchr(line, ':');
 		if (!p) { eprintf("Label does not end with a colon (':').\n"); return; }
 		*p = 0;
@@ -578,7 +579,8 @@ EEKS{printf("label %06X\n", addr);}
 				SetSymbolValue(line, ValueType(addr));
 			}
 		}
-		if (p) { file->line = p+1; ParseLine(); }	// parse after colon
+		if (p) { /*file->line = p+1;*/ ParseLine(p + 1); }	// parse after colon
+		free(line);
 	}
 }
 
@@ -589,7 +591,7 @@ EEKS{printf("label %06X\n", addr);}
 /*
  * ParseInstruction
  */
-void ParseInstruction()		//File *file)
+void ParseInstruction(const char *cline)
 {
 	if (!condition[condition_stack])
 	{
@@ -597,19 +599,19 @@ void ParseInstruction()		//File *file)
 	}
 	else if (current_macro)
 	{
-		file->line--;	// record with leading space
-		MacroLine();
+		MacroLine(cline);	// record whole line
 		return;
 	}
 	else
 	{
-		if (TryInstructions(file->line)) return;	// try instructions
-		if (MacroExecute(file->line)) return;		// try macro's otherwise
+		cline = strltrim(cline);
+		if (TryInstructions(cline)) return;		// try instructions
+		if (MacroExecute(cline)) return;		// try macro's otherwise
 
 		if (!instructions)		// try default cpu
 		{
 			ParseFile("cpu/pm.s");
-			if (TryInstructions(file->line)) return;
+			if (TryInstructions(cline)) return;
 		}
 
 		eprintf("Unknown instruction or invalid arguments.\n");
@@ -619,59 +621,56 @@ void ParseInstruction()		//File *file)
 /*
  * MacroLine
  */
-void MacroLine()	//File *file)
+void MacroLine(const char *cline)
 {
-	char *line = file->line;
-
 	if (pass == 1)
 	{
-EEKS{printf("record %s\n", line);}
-		current_macro->AddLine(line);
+EEKS{printf("record %s\n", cline);}
+		current_macro->AddLine(cline);
 	}
 }
 
 /*
  * ParseLine
  */
-void ParseLine()	//File *file)
+void ParseLine(const char *cline)
 {
-EEKS{printf("parseline %s\n", file->line);}
+EEKS{printf("parseline %s\n", cline);}
 
 	// C PreProcessor filename + linenumber fix
-	if (file->line[0] == '#')
+	if (cline[0] == '#')
 	{
-		int new_line_num = strtoul(file->line+2,0,10);
+		int new_line_num = strtoul(cline+2,0,10);
 		if (new_line_num > 0)
 		{
 			file->line_num = new_line_num - 1;
 			FREE(file->filename);		// wrong filename
-			char *p, *s = strskipspace(file->line+2);
+			char *p, *s = strdup(strskipspace((char *)cline+2));
 			if ((p = strchr(s,'\r'))) *p = 0;
 			if ((p = strchr(s,'\n'))) *p = 0;
-			file->filename = strdup(s);
+			file->filename = s;
 			return;
 		}
 	}
 
-	// remove leading space
-	bool leadingspace = false;
-	while (isspace2(*(file->line))) { leadingspace=true; file->line++; }
-	strcpy(file->origline, file->line);
+	const char *line = strltrim(cline);
+	bool leadingspace = (line != cline);
+	strcpy(file->origline, line);
 
-	if (isendline(file->line[0]))		// comment line
+	if (isendline(line[0]))		// comment line
 	{
 	}
-	else if (file->line[0] == '.')	// directive
+	else if (line[0] == '.')	// directive
 	{
-		ParseDirective();
+		ParseDirective(cline);
 	}
 	else if (leadingspace)		// instruction
 	{
-		ParseInstruction();
+		ParseInstruction(cline);
 	}
 	else	// label
 	{
-		ParseLabel();
+		ParseLabel(cline);
 	}
 	
 	UpdateMaxAddr();
@@ -705,14 +704,39 @@ void ParseFile(const char *filename)
 			file->filename = strdup(filename);
 			file->line_num = 0;
 //printf("%s\n", file->filename);
-		
+
+			char *line = NULL;
+			int len = 0;
 			while (1)
 			{
-				char line[TMPSIZE];
-				if (!fgets(line, TMPSIZE-1, file->fi)) break;
-				file->line = line;
+				char tmpline[TMPSIZE];
+				if (!fgets(tmpline, TMPSIZE-1, file->fi)) break;
 				file->line_num++;
-				ParseLine();
+
+				len += strlen(tmpline);
+				if (line != NULL)
+				{
+					line = (char *)realloc(line, len + 1);
+					strcat(line, tmpline);
+				}
+				else
+					line = strdup(tmpline);
+
+				// strip multiline escaping
+				char *p = line + len;
+				if (p > line && p[-1] == '\n') p--;
+				if (p > line && p[-1] == '\r') p--;
+				if (p > line && p[-1] == '\\')
+				{
+					*--p = '\0';
+					len = p - line;
+				}
+				else	// process the multiline
+				{
+					ParseLine(line);
+					FREE(line);
+					len = 0;
+				}
 			}
 
 			if (condition_stack != 0) {

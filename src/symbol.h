@@ -15,7 +15,7 @@ struct Symbol
 
 	~Symbol() { Free(); }	
 	void Free();
-	Symbol(char *name);
+	Symbol(const char *name);
 	void WriteSymbols(FILE *f);
 };
 
@@ -23,7 +23,7 @@ struct Symbol
  * Prototypes
  */
 Symbol *FindSymbol(const char *name);
-void SetSymbolValue(char *name, ValueType value);
+void SetSymbolValue(const char *name, ValueType value);
 ValueType GetSymbolValue(const char *name);
 void SetSymbolExpression(char *name, const char *expr, const char **next = NULL);
 void UnsetSymbol(char *name);
