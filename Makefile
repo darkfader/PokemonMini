@@ -9,6 +9,7 @@ COMPARE = diff -q --binary
 PMDIS = ./pmdis
 OUTPUTS = pmas cpu/pm.s
 #OUTPUTS += pmdis  #hmm.. need mindx.h
+AWK := awk
 
 ########
 # help #
@@ -25,7 +26,7 @@ help:
 	@echo "  clean         Delete intermediate files."
 	@echo "  cleanall      Delete output and intermediate files."
 	@echo "  tag           Tag CVS."
-	@echo "  upload        Upload new release with version to sf.net."
+#	@echo "  upload        Upload new release with version to sf.net."
 
 ####################
 # dependency stuff #
@@ -47,21 +48,33 @@ obj/%.d: src/%.cpp
 ###########
 
 # source
-../pmas-0.$(PMAS_VERSION).tar.gz: cleanall
-	tar -czf $@ *
+pmas-0.$(PMAS_VERSION)_src.tar.gz: cleanall
+	tar -c -z --exclude-vcs -f $@ *
 
 # binaries
-../pmas-0.$(PMAS_VERSION).zip: release releasetest clean
-	zip - -q -9 -r . -x ./src/ ./obj/ ./src/* ./obj/* > $@
+pmas-0.$(PMAS_VERSION).zip: release releasetest clean
+	zip - -q -9 -r . -x *.zip ./src/ ./obj/ ./src/* ./obj/* > $@
 
-.PHONY: upload
-upload: ../pmas-0.$(PMAS_VERSION).tar.gz ../pmas-0.$(PMAS_VERSION).zip
-	$(foreach file,$+,$(MAKE) $(file);)
-	$(foreach file,$+,curl --url ftp://upload.sourceforge.net/incoming/ --upload-file $(file);)
+.PHONY: upload_src
+upload_src: pmas-0.$(PMAS_VERSION)_src.tar.gz README.txt
+	$(foreach file,$+,scp $(file) darkfader,pmas@frs.sourceforge.net:/home/frs/project/p/pm/pmas/;)
+
+.PHONY: upload_bin
+upload_bin: ../pmas-0.$(PMAS_VERSION)_$(PLATFORM).zip
+	$(foreach file,$+,scp $(file) darkfader,pmas@frs.sourceforge.net:/home/frs/project/p/pm/pmas/;)
 
 .PHONY: tag
 tag:
 	cvs tag -c v0_$(PMAS_VERSION)
+
+README.txt: README ChangeLog.txt
+	cat $+ > $@
+
+ChangeLog.txt: cvs2cl.pl *
+	perl cvs2cl.pl --tagdates --summary --no-wrap --prune --utc --no-times --group-within-date --hide-filenames --stdout . | $(AWK) '/^$$/ || /^\t$$/ { next } /\tAdded:/ || /\tChanged:/ || /\tDeleted:/ { next } /  tag / { print "\n============================\n" $$0 "\n============================\n"; next } // { print $$0 }' > $@
+
+cvs2cl.pl:
+	wget "http://www.red-bean.com/cvs2cl/cvs2cl.pl"
 
 ########
 # misc #
@@ -147,7 +160,9 @@ obj/%.o: src/%.cpp
 .PHONY: clean
 clean:
 	-rm -f obj/*.o obj/*.d test/*.min test/*.sym test/*.dis.s parsemindx parsemindx.exe
+	-rmdir obj
 
 .PHONY: cleanall
 cleanall: clean
-	-rm -f pmas pmas.exe pmdis pmdis.exe cpu/pm_wordfile.txt
+	-rm -f *.tar.gz pmas pmas.exe pmdis pmdis.exe cpu/pm_wordfile.txt
+
