@@ -1,7 +1,5 @@
 PMAS_VERSION := 16
-MINDX_ZIP := "http://pokeme.shizzle.it/infos/PM Dev/Assemblers/mindx_v14.zip"
 VERSION2 :=
-#PATH := .:/bin:/usr/bin:$(PATH)
 CFLAGS := -Wall -DVERSION="\"0.$(PMAS_VERSION)$(VERSION2)\""
 LD := $(CXX)
 LDFLAGS :=
@@ -26,13 +24,12 @@ help:
 	@echo "  clean         Delete intermediate files."
 	@echo "  cleanall      Delete output and intermediate files."
 	@echo "  tag           Tag CVS."
-#	@echo "  upload        Upload new release with version to sf.net."
+	@echo "  upload        Upload new release with version to sf.net."
 
 ####################
 # dependency stuff #
 ####################
 
-SUFFIXES += .d
 NODEPS:=clean cleanall
 SOURCES:=$(shell find src/ -name "*.cpp")
 DEPFILES:=$(patsubst src/%.cpp,obj/%.d,$(SOURCES))
@@ -40,8 +37,8 @@ ifeq (0, $(words $(findstring $(MAKECMDGOALS), $(NODEPS))))
 	-include $(DEPFILES)
 endif
 
-obj/%.d: src/%.cpp
-	$(CXX) $(CXXFLAGS) -MM -MT $(patsubst src/%.cpp,obj/%.o,$<) $< > $@
+obj/%.d: obj src/%.cpp
+	$(CXX) $(CXXFLAGS) -MM -MT $(patsubst src/%.cpp,obj/%.o,$(filter %.cpp,$+)) $(filter %.cpp,$+) > $@
 
 ###########
 # release #
@@ -133,9 +130,9 @@ test/%.min: test/%.s pmas
 test/%.min: test/%.S pmas
 	$(CPP) $< | $(PMAS) - $@ $(@:min=sym)
 
-#########
-# mindx #
-#########
+######################################################
+# mindx (Pokemon Mini instruction set documentation) #
+######################################################
 
 cpu/pm.s: cpu/mindx.txt parsemindx
 	./parsemindx cpu/mindx.txt cpu/pm.s highlight.tmp
@@ -145,10 +142,10 @@ cpu/pm.s: cpu/mindx.txt parsemindx
 parsemindx: src/parsemindx.cpp
 	$(CXX) $(CFLAGS) -o $@ $+
 
-cpu/mindx.txt:
-	wget -O mindx.zip $(MINDX_ZIP)
-	unzip -o mindx.zip cpu/mindx.txt
-	rm mindx.zip
+#cpu/mindx.txt:
+#	wget -O mindx.zip $(MINDX_ZIP)
+#	unzip -o mindx.zip cpu/mindx.txt
+#	rm mindx.zip
 
 ########
 # misc #
