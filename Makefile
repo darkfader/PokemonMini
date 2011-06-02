@@ -22,15 +22,16 @@ help:
 	@echo "  debug         Build debug version of pmas."
 	@echo "  releasetest   Run some tests."
 	@echo "  debugtest     Run some tests under gdb to find bugs."
-	@echo "  clean         Delete output and intermediate files."
-	@echo "  zap           Delete intermediate files."
+	@echo "  clean         Delete intermediate files."
+	@echo "  cleanall      Delete output and intermediate files."
+	@echo "  upload        Upload new release with version to sf.net."
 
 ####################
 # dependency stuff #
 ####################
 
 SUFFIXES += .d
-NODEPS:=clean zap
+NODEPS:=clean cleanall
 SOURCES:=$(shell find src/ -name "*.cpp")
 DEPFILES:=$(patsubst src/%.cpp,obj/%.d,$(SOURCES))
 ifeq (0, $(words $(findstring $(MAKECMDGOALS), $(NODEPS))))
@@ -44,16 +45,22 @@ obj/%.d: src/%.cpp
 # release #
 ###########
 
-../pmas-0.$(PMAS_VERSION).tar.gz: zap
+# source
+../pmas-0.$(PMAS_VERSION).tar.gz: cleanall
 	tar -czf $@ *
 
+# binaries
 ../pmas-0.$(PMAS_VERSION).zip: release releasetest clean
 	zip - -q -9 -r . -x ./src/ ./obj/ ./src/* ./obj/* > $@
 
 .PHONY: upload
-upload: ../pmas-0.$(PMAS_VERSION).tar.gz ../pmas-0.$(PMAS_VERSION).zip
+upload: tag ../pmas-0.$(PMAS_VERSION).tar.gz ../pmas-0.$(PMAS_VERSION).zip
 	$(foreach file,$+,$(MAKE) $(file);)
 	$(foreach file,$+,curl --url ftp://upload.sourceforge.net/incoming/ --upload-file $(file);)
+
+.PHONY: tag
+tag:
+	cvs tag pmas-0.$(PMAS_VERSION)
 
 ########
 # misc #
@@ -138,9 +145,8 @@ obj/%.o: src/%.cpp
 
 .PHONY: clean
 clean:
-	-rm -f obj/*.o test/*.min test/*.sym test/*.dis.s parsemindx parsemindx.exe
+	-rm -f obj/*.o obj/*.d test/*.min test/*.sym test/*.dis.s parsemindx parsemindx.exe
 
-.PHONY: zap
-zap: clean
+.PHONY: cleanall
+cleanall: clean
 	-rm -f pmas pmas.exe pmdis pmdis.exe cpu/pm_wordfile.txt
-
