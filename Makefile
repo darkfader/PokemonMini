@@ -24,6 +24,7 @@ help:
 	@echo "  debugtest     Run some tests under gdb to find bugs."
 	@echo "  clean         Delete intermediate files."
 	@echo "  cleanall      Delete output and intermediate files."
+	@echo "  tag           Tag CVS."
 	@echo "  upload        Upload new release with version to sf.net."
 
 ####################
@@ -54,13 +55,13 @@ obj/%.d: src/%.cpp
 	zip - -q -9 -r . -x ./src/ ./obj/ ./src/* ./obj/* > $@
 
 .PHONY: upload
-upload: tag ../pmas-0.$(PMAS_VERSION).tar.gz ../pmas-0.$(PMAS_VERSION).zip
+upload: ../pmas-0.$(PMAS_VERSION).tar.gz ../pmas-0.$(PMAS_VERSION).zip
 	$(foreach file,$+,$(MAKE) $(file);)
 	$(foreach file,$+,curl --url ftp://upload.sourceforge.net/incoming/ --upload-file $(file);)
 
 .PHONY: tag
 tag:
-	cvs tag pmas-0.$(PMAS_VERSION)
+	cvs tag -c v0_$(PMAS_VERSION)
 
 ########
 # misc #
