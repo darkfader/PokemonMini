@@ -49,7 +49,7 @@ obj/%.d: src/%.cpp
 
 # source
 pmas-0.$(PMAS_VERSION)_src.tar.gz: cleanall
-	tar -c -z --exclude-vcs -f $@ *
+	tar -c -z --exclude-vcs -f $@ Makefile README src cpu test
 
 # binaries
 pmas-0.$(PMAS_VERSION).zip: release releasetest clean

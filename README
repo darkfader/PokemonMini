@@ -1,4 +1,15 @@
+Pika Macro ASsembler
+by darkfader
+
+A simple 2-pass assembler with a customizable instruction set.
+
+Executables:
 	pmas					assembler
-	pmdis					disassembler
+	pmdis					disassembler (not maintained anymore)
+
+Further information:
 	test/readme.S			a quick reference of directives and required syntax
 	cpu/*.s					CPU specific stuff
+
+Changelog:
+
