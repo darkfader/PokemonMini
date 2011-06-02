@@ -7,7 +7,7 @@
 ;-----------------------------------------------------------------------------
 
 ;			comment
-#			comment
+#			comment. even works after C-preprocessor
 
 ;-----------------------------------------------------------------------------
 ; Includes
@@ -68,7 +68,8 @@ Record_size:
 	mov		a, [x+l]
 
 ;-----------------------------------------------------------------------------
-; C PreProcessor example. The extension .S (uppercase) is often used.
+; C PreProcessor example. The extension .S instead of .s is often used
+; to indicate this.
 ;
 ; Further documentation @ http://gcc.gnu.org/onlinedocs/cpp/
 ;-----------------------------------------------------------------------------
@@ -86,7 +87,7 @@ Record_size:
 DoSomething:
 	nop
 _loop:
-	jmp	_loop						; force short jump with 'B' suffix
+	jmpb	_loop						; force short jump with 'B' suffix
 
 DoSomething2:
 _loop:
@@ -184,6 +185,6 @@ _local_label:
 ; Other
 ;-----------------------------------------------------------------------------
 
-	.printf "I'm at %06X.\n", .			; formatted output
+	.printf "I'm at %06X.\n", .			; formatted output. here, prints the current address
 	;.exit								; end processing of all files (results in an error)
 	.end								; end processing current file
