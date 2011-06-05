@@ -4,6 +4,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "misc.h"
 
 /*
@@ -96,8 +97,9 @@ char ParseStringChar(const char *&p)
 /*
  * ParseString
  */
-void ParseString(char *q, const char *&p)
+char *ParseString(const char *&p)
 {
+	char *s = (char *)malloc(TMPSIZE), *q = s;
 	const char *delims = delim_chars;
 	if (*p == '"') { delims = "\""; p++; }
 	while (*p && !strchr(delims, *p))
@@ -106,5 +108,6 @@ void ParseString(char *q, const char *&p)
 	}
 	*q++ = 0;		// terminate
 	if (*p) p++;	// skip delim
+	return s;
 }
 

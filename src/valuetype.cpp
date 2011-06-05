@@ -80,7 +80,7 @@ ValueType::operator long () const
 	if (s)
 	{
 		ValueType n = EvaluateExpression(s);
-		if (n.getString()) eprintf("Invalid string operation.\n"); return 0;
+		if (n.getString() != NULL) eprintf("Invalid string operation.\n"); return 0;
 		return (long)n;
 	}
 	return i;

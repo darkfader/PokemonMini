@@ -27,7 +27,7 @@ int strword(const char *s, const char *lookfor);
 int strreplace(char *s, char *from, char *to);
 int HexValue(char c);
 char ParseStringChar(const char *&p);
-void ParseString(char *q, const char *&p);
+char *ParseString(const char *&p);		// returns _new_ string
 
 /*
  * isalpha2

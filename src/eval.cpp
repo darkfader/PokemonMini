@@ -7,6 +7,7 @@
  ------------------------
 	( )
 	! ~ - +		UNARY
+	[ ]			11
 	* / %		10
 	+ -			9
 	>> <<		8
@@ -25,6 +26,7 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "eval.h"
 #include "stack.h"
 #include "misc.h"
@@ -34,9 +36,10 @@
 /*
  * Defines
  */
-#define	UNARY		128
-#define SEPERATOR	-1
-#define D(x)		-x						// special encoding of operators (double-character, unary). should fit into CharacterStack type!
+#define UNKNOWN_PREC	0
+#define	UNARY_PREC		128
+#define SEPERATOR		-1
+#define D(x)			-x						// special encoding of operators (double-character, unary). should fit into CharacterStack type!
 
 /*
  * Variables
@@ -50,18 +53,24 @@ ValueStack valueStack;
 
 /*
  * Precedence
+ * returns 0 on unknown operator
+ * high number = high precedence
  */
-int Precedence(char o, bool unary)
+int Precedence(char o, bool include_unary)
 {
-	if (unary) switch (o)
+	if (include_unary) switch (o)
 	{
+		case '(':	// hmm
 		case '!':
 		case '~':
 		case D('+'):
-		case D('-'): return UNARY;
+		case D('-'): return UNARY_PREC;
 	}
 	switch (o)
 	{
+		// indexer
+		case '[': return 11;
+
 		// multiply/divide/modulo
 		case '*':
 		case '/':
@@ -94,7 +103,7 @@ int Precedence(char o, bool unary)
 		case D('&'): return 2;
 		case D('|'): return 1;
 
-		default: return 0;
+		default: return UNKNOWN_PREC;
 	}
 }
 
@@ -133,7 +142,7 @@ EEKS{printf("EvaluateExpression '%s'\n", input);}
 			{
 				*next = p+1;
 				while (isspace2(*(*next))) (*next)++;	// remove spaces
-				if (isendline(**next)) *next = 0;	// end of line?				
+				if (isendline(**next)) *next = 0;	// end of line?
 EEKS{printf("next = '%s'\n", *next);}
 			}
 			break;
@@ -155,65 +164,78 @@ EEKS{printf("next = '%s'\n", *next);}
 		}
 
 		CharacterStack::T c = *p++;
-		CharacterStack::T c2 = *p++;
+		CharacterStack::T c2 = *p;
 
 		// fix multi-character operators
-		     if ((c == '>') && (c2 == '>')) c = D('>');	// ">>"
-		else if ((c == '<') && (c2 == '<')) c = D('<');	// "<<"
-		else if ((c == '=') && (c2 == '=')) c = D('=');	// "=="
-		else if ((c == '!') && (c2 == '=')) c = D('!');	// "!="
-		else if ((c == '>') && (c2 == '=')) c = D('}');	// "<="
-		else if ((c == '<') && (c2 == '=')) c = D('{');	// ">="
-		else if ((c == '&') && (c2 == '&')) c = D('&');	// "&&"
-		else if ((c == '|') && (c2 == '|')) c = D('|');	// "||"
-		else p--;	// oops, assumed too much
+		#define FIX_DOUBLE(d,s)		if ((c == #s[0]) && (c2 == #s[1])) { c = d; p++; }
+		FIX_DOUBLE(D('>'),>>);
+		FIX_DOUBLE(D('<'),<<);
+		FIX_DOUBLE(D('='),==);
+		FIX_DOUBLE(D('!'),!=);
+		FIX_DOUBLE(D('}'),>=);
+		FIX_DOUBLE(D('{'),<=);
+		FIX_DOUBLE(D('&'),&&);
+		FIX_DOUBLE(D('|'),||);
 
-		// differentiate plus/minus from add/subtract
-		if ((c == '+') && unary) c = D('+');
-		if ((c == '-') && unary) c = D('-');
+		// differentiate unary plus/minus from binary add/subtract
+		if (unary)
+		{
+			if (c == '+') c = D('+');
+			if (c == '-') c = D('-');
+		}
 
 EEKS{printf("%c(%d)", c, c);}
-		
+
+		if (isspace2(c)) continue;
+
 		int prec = Precedence(c, unary);
-		if (prec)
+		if (prec != UNKNOWN_PREC)	// known operator
 		{
-			unary = true;
-			if (prec < UNARY)
+			unary = true;	// enable unary operator again
+			if (prec != UNARY_PREC)		// binary operator
 			{
 				*ppostfix++ = SEPERATOR;	// seperator for number parser
 			  	while (characterStack.something())
 				{
 			     	CharacterStack::T o = characterStack.peek();
 			     	if (o == '(') break;
+			     	if (o == '[') break;
 		        	if (Precedence(o, true) < prec) break;
 					*ppostfix++ = characterStack.pop();
 				}
 			}
 			characterStack.push(c);
 		}
-		else if (!isspace2(c))
+		else if (c == ')')	// group
 		{
 			unary = false;
-			switch (c)
+			while (characterStack.something())
 			{
-				case '(':
-					characterStack.push(c);
-					unary = true;
-					break;
-				case ')':	// output number
-					while (characterStack.something())
-					{
-				     	CharacterStack::T c = characterStack.pop();
-				     	if (c == '(') break;
-				        *ppostfix++ = c;
-					}
-					break;
-				default:
-					*ppostfix++ = c;
-					break;
+		     	CharacterStack::T c = characterStack.pop();
+		     	if (c == '(') goto _br1_ok;	// exclude '('
+		        *ppostfix++ = c;
 			}
+			eprintf("Found no matching opening brace.\n");
+_br1_ok:;
 		}
-	}
+		else if (c == ']')	// group
+		{
+			unary = false;
+			while (characterStack.something())
+			{
+		     	CharacterStack::T c = characterStack.pop();
+		        *ppostfix++ = c;
+		     	if (c == '[') goto _br2_ok;	// include '[' as operator
+			}
+			eprintf("Found no matching opening bracket.\n");
+_br2_ok:;
+		}
+		else
+		{
+			unary = false;
+			*ppostfix++ = c;
+		}
+	}	// while
 
 	while (characterStack.something())
 	{
@@ -237,18 +259,9 @@ EEKS{printf("postfix='%s'\n", postfix);}
 
 		if (*p == '\"')								// string
 		{
-			char s[TMPSIZE];	//, *q = s;
-			//char *where = p++;
-			
-			ParseString(s, p);
-			
-			/*while (*p && (*p != '\"'))
-			{
-				*q++ = ParseStringChar(p);
-			}
-			p++;	// skip delim
-			*q++ = 0;*/
+			char *s = ParseString(p);
 			valueStack.push(ValueType(s));
+			free(s);
 		}
 		else if (*p == '\'')						// ascii values
 		{
@@ -319,6 +332,26 @@ EEKS{printf("id(%s)\n", id);}
 			case_binary_break('|',|);
 			case_binary_break(D('&'),&&);
 			case_binary_break(D('|'),||);
+
+			case '[':
+			{
+				ValueType rv = valueStack.pop();		// index
+				ValueType lv = valueStack.pop();
+				const char *l = lv.getString();
+				if (l == NULL)
+				{
+					printf("Indexing something different than a string is not supported.\n");
+					return ValueType::zero;
+				}
+				int i = (int)rv;
+				if (i < 0 || i >= strlen(l))
+				{
+					printf("Index out of bounds.\n");
+					return ValueType::zero;
+				}
+				valueStack.push(l[i]);
+				break;
+			}
 
 /*--------------------------------------------------------------------------*/
 			case '.':		// current address

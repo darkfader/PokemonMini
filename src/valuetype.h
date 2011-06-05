@@ -35,8 +35,7 @@ public:
 	ValueType operator <= (const ValueType &rhs) const;
 
 	operator long () const;
-	//operator char * ();
-	const char * getString() const;		// don't destroy object yet!
+	const char * getString() const;		// return the string in this value object
 	void undefine();
 	bool defined();
 

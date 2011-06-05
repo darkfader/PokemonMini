@@ -112,7 +112,7 @@ _loop:
 
 	.if		1==1
 		mov		x, -123
-	.elsif	(2==2)
+	.elif	(2==2)
 		this assembler rules !
 	.else
 		this is a stupid way to use comments :)

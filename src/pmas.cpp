@@ -437,16 +437,15 @@ EEKS{printf("'%s' '%s'\n", strskipspace(line), s);}
 	}
 	else if (DIRECTIVE("include", PARSE_OTHER_DIRECTIVES))
 	{
-		char name[TMPSIZE];
 		const char *p = strskipspace(line);
-		ParseString(name, p);
+		char *name = ParseString(p);
 		ParseFile(name);
+		free(name);
 	}
 	else if (DIRECTIVE("incbin", PARSE_OTHER_DIRECTIVES))
 	{
-		char name[TMPSIZE];
 		const char *p = strskipspace(line);
-		ParseString(name, p);
+		char *name = ParseString(p);
 		FILE *fb = fopen(name, "rb");
 
 		if (!fb) { eprintf("Cannot open binary file '%s'.\n", name); eexit(); }
@@ -465,6 +464,7 @@ EEKS{printf("'%s' '%s'\n", strskipspace(line), s);}
 			}
 		}
 		fclose(fb);
+		free(name);
 	}
 	else if (DIRECTIVE("printf", PARSE_OTHER_DIRECTIVES))
 	{
