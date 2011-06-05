@@ -15,14 +15,12 @@ struct File
 	FILE *fi;
 	int line_num;
 	char *filename;
-	//char *line;
 	char origline[TMPSIZE];		// set in ParseLine, used to print error line
 };
 
 /*
  * Variables
  */
-//extern char origline[];				// set in ParseLine, used to print error line
 extern char locallabelprefix[];		// prefix for macro/local labels
 
 extern int pass;					// pass 1..2

@@ -251,22 +251,12 @@ EEKS{printf("new macro at %p\n", current_macro);}
 		condition_stack--;
 		parse_directives = condition[condition_stack] ? PARSE_ALL_DIRECTIVES : PARSE_COND_DIRECTIVES;
 	}
-	else if (DIRECTIVE("ifdef", PARSE_COND_DIRECTIVES))
+	else if (DIRECTIVE("ifdef", PARSE_COND_DIRECTIVES) || DIRECTIVE("ifndef", PARSE_COND_DIRECTIVES))
 	{
 		condition_stack++;
 		if (condition_stack >= MAX_CONDSTACK) { eprintf("Conditions stack exceeded.\n"); eexit(); }
 		char *defname = strtok((char *)strskipspace(line), delim_chars);
-		condition[condition_stack] = FindSymbol(defname) ? true : false;
-		condition_met[condition_stack] = condition[condition_stack];
-		if (!condition[condition_stack-1]) condition[condition_stack] = false;	// parent must be true
-		parse_directives = condition[condition_stack] ? PARSE_ALL_DIRECTIVES : PARSE_COND_DIRECTIVES;
-	}
-	else if (DIRECTIVE("ifndef", PARSE_COND_DIRECTIVES))
-	{
-		condition_stack++;
-		if (condition_stack >= MAX_CONDSTACK) { eprintf("Conditions stack exceeded.\n"); eexit(); }
-		char *defname = strtok((char *)strskipspace(line), delim_chars);
-		condition[condition_stack] = FindSymbol(defname) ? false : true;
+		condition[condition_stack] = IsSymbolDefined(defname) ^ (DIRECTIVE("ifndef", PARSE_COND_DIRECTIVES));
 		condition_met[condition_stack] = condition[condition_stack];
 		if (!condition[condition_stack-1]) condition[condition_stack] = false;	// parent must be true
 		parse_directives = condition[condition_stack] ? PARSE_ALL_DIRECTIVES : PARSE_COND_DIRECTIVES;
@@ -565,7 +555,7 @@ void ParseLabel(const char *cline)
 				char tmp[TMPSIZE];
 				strcpy(tmp, locallabelprefix);
 				strcat(tmp, line);
-				if (FindSymbol(tmp)) { eprintf("Symbol already defined.\n"); return; }
+				if (IsSymbolDefined(tmp)) { eprintf("Symbol already defined.\n"); return; }
 				SetSymbolValue(tmp, ValueType(addr));
 			}
 		}
@@ -574,7 +564,7 @@ void ParseLabel(const char *cline)
 			strcpy(locallabelprefix, line);
 			if (pass == 1)
 			{
-				if (FindSymbol(line)) { eprintf("Symbol already defined.\n"); return; }
+				if (IsSymbolDefined(line)) { eprintf("Symbol already defined.\n"); return; }
 EEKS{printf("label %06X\n", addr);}
 				SetSymbolValue(line, ValueType(addr));
 			}

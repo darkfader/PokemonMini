@@ -11,7 +11,6 @@
 #else
 	#define EEKS				if (0)
 #endif
-//#include <stdio.h>
 
 /*
  * Variables
@@ -22,6 +21,7 @@ extern const char delim_chars[];
 /*
  * Prototypes
  */
+void eprintf(const char *fmt, ...);
 char *strskipspace(char *s);		// skip current word and followed space
 int strword(const char *s, const char *lookfor);
 int strreplace(char *s, char *from, char *to);

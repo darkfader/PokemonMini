@@ -45,10 +45,8 @@ int strreplace(char *s, char *from, char *to)
 	{
 		char tmp[TMPSIZE];
 		strcpy(tmp, where + strlen(from));
-//printf("tmp='%s'\n", tmp);
 		strcpy(where, to);
 		strcat(where, tmp);
-//printf("result='%s'\n", s); eexit();
 		return 1;
 	}
 	return 0;

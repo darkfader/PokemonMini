@@ -25,6 +25,12 @@
 		.endif
 	.endif
 
+	.undefine YUP
+	.ifdef YUP
+		.printf "BUG!\n"
+		.exit 1
+	.endif
+
 ; testing variable in combination with a recursive macro
 
 	.macro OMG B

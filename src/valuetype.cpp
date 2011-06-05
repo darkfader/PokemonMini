@@ -6,69 +6,28 @@
 
 char undefined[] = "undefined";
 
-int hmmm = 0;
-#define HMMM(i)			//printf("hmmmmm=%d\n", (hmmm += i));
-
-
-ValueType::ValueType() { /*printf("ValueType()\n");*/ s = 0; i = 0; }
+ValueType::ValueType() { s = 0; i = 0; }
 
 ValueType::ValueType(const ValueType &rhs)
 {
-	//Free();
-	//printf("ValueType(const ValueType &rhs)\n");
-	/*if (rhs.s == undefined) this->s = undefined;
-	else if (rhs.s == 0) { this->s = 0; this->i = rhs.i; }
-	else*/
-	//if (rhs.s) printf("strdup %s\n", rhs.s);
-	
-	//if (s) exit(42);
-	//Free();
-	
 	s = rhs.s ? strdup(rhs.s) : 0;
 	i = rhs.i;
-	if (s) HMMM(+1);
-	
-	//print();
 }
 
-ValueType::ValueType(const char *s) { this->s = strdup(s); i=0; HMMM(+1); }
+ValueType::ValueType(const char *s) { this->s = strdup(s); i=0; }
 ValueType::ValueType(long i) { s = 0; this->i = i; }
 
 
 ValueType& ValueType::operator = (const ValueType &rhs) 
 {
 	if (this == &rhs) { eprintf("Assign to myself!\n"); eexit(); }
-	//if (s) exit(42);
-	
 	Free();
-	
-	//printf("operator =\n");
-	
-	/*if (rhs.s == undefined) this->s = undefined;
-	else if (rhs.s == 0) { this->s = 0; this->i = rhs.i; }
-	else this->s = strdup(rhs.s);*/
-
-	//Free();
-	//if (rhs.s) printf("strdup2 %s\n", rhs.s);
-
 	s = rhs.s ? strdup(rhs.s) : 0;
 	i = rhs.i;
-	if (s) HMMM(+1);
-	
-	//print();
-	//ValueType(rhs);
-
   	return *this;
 }
 
-//ValueType(ValueType &other) { Free(); this->s = strdup(other.s); this->i = other.i; }
-
-//ValueType & operator = (char *s) { ValueType(s); return *this; }
-//ValueType & operator = (long i) { ValueType(i); return *this; }
-
-//void setString(char *s) { this->s = strdup(s); i=0; }
-
-void ValueType::Free() { if (s) { HMMM(-1); /*printf("deleting %08X '%s'\n", s, s); */ s[0] = '0'; if (s != undefined) free(s); s = 0; } }
+void ValueType::Free() { if (s) { s[0] = '0'; if (s != undefined) free(s); s = 0; } }
 ValueType::~ValueType() { Free(); }
 
 /*

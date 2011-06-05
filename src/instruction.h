@@ -46,21 +46,13 @@ struct ArgInfo
 
 struct Instruction
 {
-	//unsigned char skip;					// number of same leading characters as previous instruction in array
 	char *fmt;							// uppercase format string. delimiters ' ' and ','. arguments '~0' and '~1'
-
 	unsigned int flags;					// instruction behaviour
-
-	//unsigned int extended;				// 0,0xCE,0xCF
-	//unsigned int opcode;				// 0x00..0xFF
 	unsigned int fixed;
 	unsigned int size;					// total size of instruction
 	unsigned int argnum;				// number of arguments
 
-	//unsigned int argbytes;				// number of argument bytes
-	//unsigned int argflags[MAX_ARGS];	// argument byte flags
 	ArgInfo argInfo[MAX_ARGS];
-	
 	Instruction *next;
 	
 	~Instruction()
@@ -78,7 +70,6 @@ extern Instruction *instructions;
  * Prototypes
  */
 bool TryInstructions(const char *file_line);
-//bool SelectCpu(const char *name);
 void AddInstruction(Instruction *instruction);
 void FreeInstructions();
 

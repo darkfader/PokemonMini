@@ -16,10 +16,6 @@ public:
 	ValueType();
 	ValueType(const ValueType &rhs);
 	ValueType& operator = (const ValueType &rhs);
-
-	//ValueType & operator = (char *s);
-	//ValueType & operator = (long i);
-	//void setString(char *s);
 	ValueType(const char *s);
 	ValueType(long i);
 	void Free();

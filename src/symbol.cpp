@@ -74,6 +74,16 @@ Symbol *FindSymbol(const char *name)
 }
 
 /*
+ * IsSymbolDefined
+ */
+bool IsSymbolDefined(const char *name)
+{
+	Symbol *s = FindSymbol(name);
+	if (s == NULL) return false;
+	return s->value.defined();
+}
+
+/*
  * CreateSymbol
  */
 Symbol *CreateSymbol(const char *name)
