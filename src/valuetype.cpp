@@ -116,10 +116,17 @@ ValueType ValueType::operator + (const ValueType &rhs)
 	{
 		char tmp[TMPSIZE];
 		strcpy(tmp, _s);
-		sprintf(tmp, "%ld", rhs._i);
+		sprintf(tmp+strlen(tmp), "%ld", rhs._i);
 		return ValueType(tmp);
 	}
-	else
+	else if (!_s && rhs._s)	// number + string
+	{
+		char tmp[TMPSIZE];
+		sprintf(tmp, "%ld", _i);
+		strcat(tmp, rhs._s);
+		return ValueType(tmp);
+	}
+	else	// number + number
 	{
 		return ValueType(_i + rhs);
 	}
