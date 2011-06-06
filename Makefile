@@ -1,4 +1,4 @@
-PMAS_VERSION := 17
+PMAS_VERSION := 18
 VERSION2 :=
 CFLAGS := -Wall -DVERSION="\"0.$(PMAS_VERSION)$(VERSION2)\""
 LD := $(CXX)
@@ -24,7 +24,7 @@ help:
 	@echo "  clean         Delete intermediate files."
 	@echo "  cleanall      Delete output and intermediate files."
 	@echo "  tag           Tag CVS."
-	@echo "  upload        Upload new release with version to sf.net."
+	@echo "  upload_src    Upload new release with version to sf.net."
 
 ####################
 # dependency stuff #

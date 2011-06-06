@@ -4,31 +4,60 @@
 #include "valuetype.h"
 #include "eval.h"
 
-char undefined[] = "undefined";
-
-ValueType::ValueType() { s = 0; i = 0; }
+ValueType::ValueType()
+{
+	_s = NULL;
+	_i = 0;
+	_defined = false;
+}
 
 ValueType::ValueType(const ValueType &rhs)
 {
-	s = rhs.s ? strdup(rhs.s) : 0;
-	i = rhs.i;
+	_s = rhs._s ? strdup(rhs._s) : NULL;
+	_i = rhs._i;
+	_defined = rhs._defined;
 }
 
-ValueType::ValueType(const char *s) { this->s = strdup(s); i=0; }
-ValueType::ValueType(long i) { s = 0; this->i = i; }
+ValueType::ValueType(const char *s)
+{
+	_s = strdup(s);
+	_i = 0;
+	_defined = true;
+}
 
+ValueType::ValueType(long i)
+{
+	_s = NULL;
+	_i = i;
+	_defined = true;
+}
 
 ValueType& ValueType::operator = (const ValueType &rhs) 
 {
 	if (this == &rhs) { eprintf("Assign to myself!\n"); eexit(); }
 	Free();
-	s = rhs.s ? strdup(rhs.s) : 0;
-	i = rhs.i;
+	_s = rhs._s ? strdup(rhs._s) : NULL;
+	_i = rhs._i;
+	_defined = rhs._defined;
   	return *this;
 }
 
-void ValueType::Free() { if (s) { s[0] = '0'; if (s != undefined) free(s); s = 0; } }
-ValueType::~ValueType() { Free(); }
+void ValueType::Free()
+{
+	if (_s != NULL)
+	{
+		_s[0] = '0';
+		free(_s);
+		_s = NULL;
+	}
+	_i = 0;
+	_defined = false;
+}
+
+ValueType::~ValueType()
+{
+	Free();
+}
 
 /*
  * operator long
@@ -36,13 +65,13 @@ ValueType::~ValueType() { Free(); }
  */
 ValueType::operator long () const
 {
-	if (s)
+	if (_s != NULL)
 	{
-		ValueType n = EvaluateExpression(s);
+		ValueType n = EvaluateExpression(_s);
 		if (n.getString() != NULL) eprintf("Invalid string operation.\n"); return 0;
 		return (long)n;
 	}
-	return i;
+	return _i;
 }
 
 /*
@@ -51,7 +80,7 @@ ValueType::operator long () const
  */
 const char * ValueType::getString() const
 {
-	return s;
+	return _s;
 }
 
 /*
@@ -60,8 +89,6 @@ const char * ValueType::getString() const
 void ValueType::undefine()
 {
 	Free();
-	s = undefined;
-	i = 0;
 }
 
 /*
@@ -69,7 +96,7 @@ void ValueType::undefine()
  */
 bool ValueType::defined()
 {
-	return (s != undefined);
+	return _defined;
 }
 
 /*
@@ -77,23 +104,24 @@ bool ValueType::defined()
  */
 ValueType ValueType::operator + (const ValueType &rhs)
 {
-	if (s && rhs.s)		// concatenate strings
+	if (!_defined || !rhs._defined) { eprintf("Trying to add with undefined value!\n"); eexit(); }
+	if (_s && rhs._s)		// concatenate strings
 	{
 		char tmp[TMPSIZE];
-		strcpy(tmp, s);
-		strcat(tmp, rhs.s);
+		strcpy(tmp, _s);
+		strcat(tmp, rhs._s);
 		return ValueType(tmp);
 	}
-	else if (s && !rhs.s)	// string + number
+	else if (_s && !rhs._s)	// string + number
 	{
 		char tmp[TMPSIZE];
-		strcpy(tmp, s);
-		sprintf(tmp, "%ld", rhs.i);
+		strcpy(tmp, _s);
+		sprintf(tmp, "%ld", rhs._i);
 		return ValueType(tmp);
 	}
 	else
 	{
-		return ValueType(i + rhs);
+		return ValueType(_i + rhs);
 	}
 }
 
@@ -103,10 +131,11 @@ ValueType ValueType::operator + (const ValueType &rhs)
 #define COMPARE_OPERATION(op)	\
 	ValueType ValueType::operator op (const ValueType &rhs) const	\
 	{	\
-		if (s && rhs.s)		\
-			return ValueType(strcmp(s, rhs.s) op 0);	\
+		if (!_defined || !rhs._defined) { eprintf("Trying to compare with undefined value!\n"); eexit(); }	\
+		if (_s && rhs._s)		\
+			return ValueType(strcmp(_s, rhs._s) op 0);	\
 		else	\
-			return ValueType(i op (long)rhs);	\
+			return ValueType(_i op (long)rhs);	\
 	}
 
 COMPARE_OPERATION(!=);
@@ -121,10 +150,13 @@ COMPARE_OPERATION(<=);
  */
 void ValueType::print() const
 {
-	if (!s)
-		printf("value=%ld\n", i);
+	if (!_defined)
+		printf("value=undefined\n");
+	else if (_s != NULL)
+		printf("value='%s'\n", _s);
 	else
-		printf("value='%s'\n", s);
+		printf("value=%ld\n", _i);
 }
 
 ValueType ValueType::zero((long)0);
+

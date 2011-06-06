@@ -1,16 +1,15 @@
 #ifndef _VALUETYPE_H
 #define _VALUETYPE_H
 
-extern char undefined[];
-
 /*
  * ValueType
  */
 class ValueType
 {
 private:
-	char *s;	// if set, this value is a string
-	long i;
+	bool _defined;
+	char *_s;	// if set, this value is a string
+	long _i;
 
 public:
 	ValueType();

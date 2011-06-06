@@ -3,6 +3,7 @@
 
 #include "valuetype.h"
 #include "misc.h"
+#include "pmas.h"
 
 /*
  * Typedefs
@@ -10,14 +11,16 @@
 template <typename _T> struct Stack
 {
 	typedef _T T;
-	T data[TMPSIZE], *p;
-	Stack() { p = data; }
+	T _top[TMPSIZE];
+	T *_p;
+
+	Stack() { _p = _top; }
 	~Stack() { empty(); }
 	void empty() { while (something()) pop(); }
-	void push(T x);// { *p++ = x; }
+	bool something() { return _p > _top; }
+	void push(T x);
+	T peek();
 	T pop();
-	T peek() { return *(p-1); }
-	bool something() { return p != data; }
 };
 
 typedef Stack<ValueType> ValueStack;
