@@ -6,6 +6,7 @@
  */
 #include <stdio.h>
 #include "misc.h"
+#include "valuetype.h"
 
 /*
  * Typedefs
@@ -19,9 +20,21 @@ struct File
 };
 
 /*
+ * Enums
+ */
+enum
+{
+	PASS_PRE,
+	PASS_MID,
+	PASS_DEF = 256,
+	PASS_ASM
+};
+
+/*
  * Variables
  */
 extern char locallabelprefix[];		// prefix for macro/local labels
+extern bool locallabelprefix_set;	// set by .localprefix
 
 extern int pass;					// pass 1..2
 extern int option_range;			// range checking of immediate values (default = 0)
@@ -36,6 +49,7 @@ extern File *file;
 /*
  * Prototypes
  */
+bool SpecialSymbols(const char *name, ValueType &out);
 void ParseFile(const char *filename);
 void ParseLine(const char *file_line);
 void eprintf(const char *fmt, ...);

@@ -14,6 +14,18 @@ const char endline_chars[] = "#;\r\n";			// match with 'isendline'. Note: the ex
 const char delim_chars[] = ", \t\r\n";			// use with strtok
 
 /*
+ * strisempty
+ * return true if empty or null
+ */
+bool strisempty(const char *s)
+{
+	if (!s) return true;
+	while (*s && isspace2(*s)) s++;
+	return (*s == 0);
+}
+
+
+/*
  * strskipspace
  * return next word
  */

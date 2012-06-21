@@ -32,6 +32,7 @@
 #include "misc.h"
 #include "pmas.h"
 #include "symbol.h"
+#include "tmplabel.h"
 
 /*
  * Defines
@@ -163,6 +164,9 @@ EEKS{printf("next = '%s'\n", *next);}
 			continue;
 		}
 
+		// for temporary labels
+		if (*p == ':') unary = false;
+
 		CharacterStack::T c = *p++;
 		CharacterStack::T c2 = *p;
 
@@ -289,6 +293,40 @@ EEKS{printf("postfix='%s'\n", postfix);}
 			ValueType n(strtol(p,(char **)&p,0));
 			valueStack.push(n);
 		}
+		else if (*p == ':')					// temporary label
+		{
+			char id[TMPSIZE], *i = id;
+			int depth = 0;
+			p++;
+			while ((*p == 'b') || (*p == 'f'))
+			{
+				if (*p == 'b') depth--;
+				if (*p == 'f') depth++;
+				*i++ = *p++;
+			}
+			*i = 0;
+			if (depth != 0)
+			{
+				TmpLabelItem *tl = FindTmpLabel(depth);
+				long r = 0;
+				if (tl)
+				{
+					r = (long)tl->addr;
+				}
+				else if (pass == PASS_ASM)
+				{
+					eprintf("Can't find temporary label.\n");
+				}
+				ValueType n(r);
+				valueStack.push(n);
+			}
+			else
+			{
+				eprintf("Must specify direction after ':' operator.\n");
+				ValueType n((long)0);
+				valueStack.push(n);
+			}
+		}
 		else if (isidentifier(*p, true))			// identifier
 		{
 EEKS{printf("isidentifier(%s)\n", p);}
@@ -344,7 +382,7 @@ EEKS{printf("id(%s)\n", id);}
 					return ValueType::zero;
 				}
 				int i = (int)rv;
-				if (i < 0 || i >= strlen(l))
+				if (i < 0 || i >= (int)strlen(l))
 				{
 					printf("Index out of bounds.\n");
 					return ValueType::zero;

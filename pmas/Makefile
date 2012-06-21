@@ -1,11 +1,12 @@
-PMAS_VERSION := 19
+PMAS_VERSION := 20
 VERSION2 :=
-CFLAGS := -Wall -DVERSION="\"0.$(PMAS_VERSION)$(VERSION2)\""
+MODIFIER :=
+CFLAGS := -Wall -DVERSION="\"0.$(PMAS_VERSION)$(VERSION2)$(MODIFIER)\"" -DVERSIONN=$(PMAS_VERSION)
 LD := $(CXX)
 LDFLAGS :=
 COMPARE = diff -q --binary
 PMDIS = ./pmdis
-OUTPUTS = pmas cpu/pm.s
+OUTPUTS = pmas$(MODIFIER) cpu/pm.s
 #OUTPUTS += pmdis  #hmm.. need mindx.h
 AWK := awk
 
@@ -45,24 +46,24 @@ obj/%.d: obj src/%.cpp
 ###########
 
 # source
-pmas-0.$(PMAS_VERSION)_src.tar.gz: cleanall
+pmas-0.$(PMAS_VERSION)$(MODIFIER)_src.tar.gz: cleanall
 	tar -c -z --exclude-vcs -f $@ Makefile README src cpu test
 
 # binaries
-pmas-0.$(PMAS_VERSION).zip: release releasetest clean
+pmas-0.$(PMAS_VERSION)$(MODIFIER).zip: release releasetest clean
 	zip - -q -9 -r . -x *.zip ./src/ ./obj/ ./src/* ./obj/* > $@
 
 .PHONY: upload_src
-upload_src: pmas-0.$(PMAS_VERSION)_src.tar.gz README.txt
+upload_src: pmas-0.$(PMAS_VERSION)$(MODIFIER)_src.tar.gz README.txt
 	$(foreach file,$+,scp $(file) darkfader,pmas@frs.sourceforge.net:/home/frs/project/p/pm/pmas/;)
 
 .PHONY: upload_bin
-upload_bin: ../pmas-0.$(PMAS_VERSION)_$(PLATFORM).zip
+upload_bin: ../pmas-0.$(PMAS_VERSION)$(MODIFIER)_$(PLATFORM).zip
 	$(foreach file,$+,scp $(file) darkfader,pmas@frs.sourceforge.net:/home/frs/project/p/pm/pmas/;)
 
 .PHONY: tag
 tag:
-	cvs tag -c v0_$(PMAS_VERSION)
+	cvs tag -c v0_$(PMAS_VERSION)$(MODIFIER)
 
 README.txt: README ChangeLog.txt
 	cat $+ > $@
@@ -91,12 +92,12 @@ release: LDFLAGS +=							#-Wl,-s
 release: $(OUTPUTS)
 
 .PHONY: debugtest
-debugtest: PMAS = echo r | gdb -q -x - --args pmas
+debugtest: PMAS = echo r | gdb -q -x - --args pmas$(MODIFIER)
 debugtest: debug
 	$(PMAS) test/test.s test/test.min
 
 .PHONY: releasetest
-releasetest: PMAS = ./pmas
+releasetest: PMAS = ./pmas$(MODIFIER)
 releasetest: release test/readme.min test/test1.min test/test2.min test/test3.min test/opcodes1.min test/opcodes2.min test/opcodes3.min
 	$(COMPARE) test/opcodes1.min test/opcodes2.min
 	$(COMPARE) test/opcodes1.min test/opcodes3.min
@@ -111,10 +112,10 @@ releasetest: release test/readme.min test/test1.min test/test2.min test/test3.mi
 # pmas/pmdis #
 ##############
 
-PMAS_SOURCES := src/pmas.cpp src/eval.cpp src/misc.cpp src/symbol.cpp src/stack.cpp src/valuetype.cpp src/macrolist.cpp src/instruction.cpp src/mem.cpp
+PMAS_SOURCES := src/pmas$(MODIFIER).cpp src/eval.cpp src/misc.cpp src/symbol.cpp src/stack.cpp src/valuetype.cpp src/macrolist.cpp src/instruction.cpp src/mem.cpp src/tmplabel.cpp
 PMAS_OBJECTS := $(patsubst src/%.cpp,obj/%.o,$(PMAS_SOURCES))
 
-pmas: obj $(PMAS_OBJECTS)
+pmas$(MODIFIER): obj $(PMAS_OBJECTS)
 	$(LD) $(LDFLAGS) -o $@ $(filter %.o,$+)
 
 pmdis: obj obj/pmdis.o
@@ -124,10 +125,10 @@ pmdis: obj obj/pmdis.o
 # tests #
 #########
 
-test/%.min: test/%.s pmas
+test/%.min: test/%.s pmas$(MODIFIER)
 	$(PMAS) $< $@ $(@:min=sym)
 
-test/%.min: test/%.S pmas
+test/%.min: test/%.S pmas$(MODIFIER)
 	$(CPP) $< | $(PMAS) - $@ $(@:min=sym)
 
 ######################################################
@@ -161,5 +162,5 @@ clean:
 
 .PHONY: cleanall
 cleanall: clean
-	-rm -f *.tar.gz pmas pmas.exe pmdis pmdis.exe cpu/pm_wordfile.txt
+	-rm -f *.tar.gz pmas$(MODIFIER) pmas$(MODIFIER).exe pmdis pmdis.exe cpu/pm_wordfile.txt
 

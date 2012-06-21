@@ -42,7 +42,7 @@ void FreeInstructions()
 
 /*
  * PlaceInstruction
- * pass == 2
+ * pass == PASS_ASM
  */
 void PlaceInstruction(Instruction *instruction, unsigned int &addr, char args[2][TMPSIZE])
 {
@@ -138,13 +138,13 @@ bool TryInstruction(Instruction *instruction, char *line, int &skip, bool place,
 			
 			if (place)
 			{
-				if (pass == 1)
-				{
-					addr += instruction->size;
-				}
-				else	// if (pass == 2)
+				if (pass == PASS_ASM)
 				{
 					PlaceInstruction(instruction, addr, args);
+				}
+				else
+				{
+					addr += instruction->size;
 				}
 			}
 			return true;

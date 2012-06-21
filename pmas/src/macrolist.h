@@ -15,8 +15,9 @@ struct MacroList
 	StringList *parameters;
 	StringList *lines;
 	MacroList *next;
+	bool icase;
 
-	MacroList(const char *name);
+	MacroList(const char *name, bool ignore_case);
 	void AddParameter(const char *string);
 	void AddLine(const char *string);
 };
@@ -31,7 +32,7 @@ extern int macro_id;		// reset to 0 for each pass
  * Prototypes
  */
 MacroList *FindMacro(const char *name);
-MacroList *NewMacro(const char *name);
+MacroList *NewMacro(const char *name, bool ignore_case);
 bool MacroExecute(const char *line);
 
 #endif	// _MACROLIST_H

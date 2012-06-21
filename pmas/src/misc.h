@@ -22,6 +22,7 @@ extern const char delim_chars[];
  * Prototypes
  */
 void eprintf(const char *fmt, ...);
+bool strisempty(const char *s);
 char *strskipspace(char *s);		// skip current word and followed space
 int strword(const char *s, const char *lookfor);
 int strreplace(char *s, char *from, char *to);

@@ -28,6 +28,7 @@ TODO:
 #include "instruction.h"
 #include "mem.h"
 #include "symbol.h"
+#include "tmplabel.h"
 
 /****************************************************************************\
  File
@@ -58,6 +59,9 @@ FileStack fileStack;
 #define MAX_INCLUDEPATHS		32
 char *includepaths[MAX_INCLUDEPATHS];		// no trailing slashes
 int includepaths_count = 0;
+
+char os_slash;		// os specific slash character
+char tmp[TMPSIZE];
 
 /****************************************************************************\
  Error
@@ -117,11 +121,14 @@ int option_localjump;		// jumps to local labels default to short jumps? (default
 int option_farjump;			// jumps to non-local labels and without suffix default to far jumps? (default = 1)
 int option_word;			// *NOT WORKING YET* non-jumps without B or W suffix default to word? (default = 0)
 int option_fill;			// byte to fill uninitialized data with (default = 0xFF)
+int option_ram_base;			// RAM base address
+int option_symoutput;			// Symbol output type
 
 int condition_stack;			// condition stack level
 bool condition[MAX_CONDSTACK];		// conditional assembling
 bool condition_met[MAX_CONDSTACK];	// conditional already met?
 char locallabelprefix[TMPSIZE];		// prefix for macro/local labels
+bool locallabelprefix_set;		// set by .localprefix
 int repeat;					// macro repeat count
 
 /****************************************************************************\
@@ -142,6 +149,18 @@ int parse_directives;		// what to parse
 #define DIRECTIVE(name, category)	\
 	(strword(line, name) && (valid_directive = true, (parse_directives & category)))
 
+/*
+ * SpecialSymbols
+ */
+bool SpecialSymbols(const char *name, ValueType &out)
+{
+	     if (strcmp(name, "__PMAS__") == 0) out = ValueType(VERSIONN);
+	else if (strcmp(name, "__LINE__") == 0) out = ValueType(file->line_num);
+	else if (strcmp(name, "__FILE__") == 0) out = ValueType(file->filename);
+	else if (strcmp(name, "__RAMBASE__") == 0) out = ValueType(option_ram_base);
+	else return false;
+	return true;
+}
 
 /*
  * ParseDirective
@@ -154,6 +173,7 @@ void ParseDirective(const char *cline)
 //printf("'%s'\n", line);
 	bool valid_directive = false;
 	//bool done_directive = true;
+//printf("Line: [%s]\n", cline);
 	
 	/*
 	 * macro ending directives
@@ -183,14 +203,14 @@ void ParseDirective(const char *cline)
 	/*
 	 * macro starting directives
 	 */
-	if (DIRECTIVE("macro", PARSE_MACRO_DIRECTIVES))
+	if (DIRECTIVE("macro", PARSE_MACRO_DIRECTIVES) || DIRECTIVE("macroicase", PARSE_MACRO_DIRECTIVES))
 	{
 		char *name = strtok((char *)strskipspace(line), delim_chars);
 		current_macro = FindMacro(name);
-		if (pass == 1)
+		if (pass != PASS_ASM)
 		{
 			if (current_macro) { eprintf("Macro name already defined.\n"); eexit(); }
-			current_macro = NewMacro(name);
+			current_macro = NewMacro(name, DIRECTIVE("macroicase", PARSE_MACRO_DIRECTIVES));
 EEKS{printf("new macro at %p\n", current_macro);}
 			char *paramname;
 			while ((paramname = strtok(0, delim_chars)))
@@ -206,7 +226,7 @@ EEKS{printf("new macro at %p\n", current_macro);}
 	else if (DIRECTIVE("rept", PARSE_REPT_DIRECTIVES))
 	{
 		repeat = EvaluateExpression(strskipspace(line));
-		current_macro = NewMacro("_rept");
+		current_macro = NewMacro("_rept", false);
 		parse_directives = PARSE_REPT_DIRECTIVES;
 	}
 
@@ -261,6 +281,19 @@ EEKS{printf("new macro at %p\n", current_macro);}
 		if (!condition[condition_stack-1]) condition[condition_stack] = false;	// parent must be true
 		parse_directives = condition[condition_stack] ? PARSE_ALL_DIRECTIVES : PARSE_COND_DIRECTIVES;
 	}
+	else if (DIRECTIVE("ifstring", PARSE_COND_DIRECTIVES) || DIRECTIVE("ifnstring", PARSE_COND_DIRECTIVES))
+	{
+		condition_stack++;
+		if (condition_stack >= MAX_CONDSTACK) { eprintf("Conditions stack exceeded.\n"); eexit(); }
+		char *defname = strtok((char *)strskipspace(line), delim_chars);
+		if (DIRECTIVE("ifnstring", PARSE_COND_DIRECTIVES))
+			condition[condition_stack] = EvaluateExpression(defname).getString() == NULL;
+		else
+			condition[condition_stack] = EvaluateExpression(defname).getString() != NULL;
+		condition_met[condition_stack] = condition[condition_stack];
+		if (!condition[condition_stack-1]) condition[condition_stack] = false;	// parent must be true
+		parse_directives = condition[condition_stack] ? PARSE_ALL_DIRECTIVES : PARSE_COND_DIRECTIVES;
+	}
 
 	/*
 	 * other directives
@@ -281,14 +314,14 @@ EEKS{printf("'%s'\n", p);}
 			{
 				while (*s)
 				{
-					if (pass == 2) reloc_data[addr] = *s;
+					if (pass == PASS_ASM) reloc_data[addr] = *s;
 					addr++;
 					s++;
 				}
 			}
 			else
 			{
-				if (pass == 2) reloc_data[addr] = n;
+				if (pass == PASS_ASM) reloc_data[addr] = n;
 				addr++;
 			}
 		}
@@ -300,7 +333,7 @@ EEKS{printf("'%s'\n", p);}
 		while (p)
 		{
 			long number = EvaluateExpression(p, &p);
-			if (pass == 2)
+			if (pass == PASS_ASM)
 			{
 				reloc_data[addr+0] = number;
 				reloc_data[addr+1] = number >> 8;
@@ -316,7 +349,7 @@ EEKS{printf("'%s'\n", p);}
 		while (p)
 		{
 			long number = EvaluateExpression(p, &p);
-			if (pass == 2)
+			if (pass == PASS_ASM)
 			{
 				reloc_data[addr+0] = number;
 				reloc_data[addr+1] = number >> 8;
@@ -327,15 +360,40 @@ EEKS{printf("'%s'\n", p);}
 			//p = strtok(0, ",");
 		}
 	}
+	else if (DIRECTIVE("ram", PARSE_OTHER_DIRECTIVES) || DIRECTIVE("ramicase", PARSE_OTHER_DIRECTIVES))
+	{
+		char *s = strskipspace(line);
+		char *name = strtok(s, delim_chars);
+		char *expr = strtok(0, "");
+		int size = 0;
+		if (expr) size = EvaluateExpression(expr);
+		if (size <= 0)
+		{
+			eprintf("Invalid ram size.\n");
+		}
+		SetSymbolValue(name, ValueType(option_ram_base), DIRECTIVE("ramicase", PARSE_OTHER_DIRECTIVES) ? SYM_RAM_ICASE : SYM_RAM);
+		option_ram_base += size;
+	}
 	else if (DIRECTIVE("equ", PARSE_OTHER_DIRECTIVES) || DIRECTIVE("set", PARSE_OTHER_DIRECTIVES) || DIRECTIVE("define", PARSE_OTHER_DIRECTIVES))
 	{
 		char *s = strskipspace(line);
 		char *name = strtok(s, delim_chars);
 		const char *expr = strtok(0, "");
-		if (DIRECTIVE("define", PARSE_OTHER_DIRECTIVES)) if (!expr) expr = "1";		// value is optional for .define
+		if (DIRECTIVE("define", PARSE_OTHER_DIRECTIVES)) if (strisempty(expr)) expr = "1";	// value is optional for .define
 		if (!expr) expr = "";
 EEKS{printf("equ '%s'='%s'\n", name, expr);}
-		SetSymbolExpression(name, expr);
+		SetSymbolExpression(name, expr, SYM_DEF);
+EEKS{printf("verify "); GetSymbolValue(name).print();}
+	}
+	else if (DIRECTIVE("equicase", PARSE_OTHER_DIRECTIVES) || DIRECTIVE("seticase", PARSE_OTHER_DIRECTIVES) || DIRECTIVE("defineicase", PARSE_OTHER_DIRECTIVES))
+	{
+		char *s = strskipspace(line);
+		char *name = strtok(s, delim_chars);
+		const char *expr = strtok(0, "");
+		if (DIRECTIVE("define", PARSE_OTHER_DIRECTIVES)) if (strisempty(expr)) expr = "1";	// value is optional for .define
+		if (!expr) expr = "";
+EEKS{printf("equ '%s'='%s'\n", name, expr);}
+		SetSymbolExpression(name, expr, SYM_DEF_ICASE);
 EEKS{printf("verify "); GetSymbolValue(name).print();}
 	}
 	else if (DIRECTIVE("option", PARSE_OTHER_DIRECTIVES))
@@ -350,6 +408,10 @@ EEKS{printf("verify "); GetSymbolValue(name).print();}
 		else if (!strcmp(name, "localjump")) option_localjump = value;
 		else if (!strcmp(name, "word")) option_word = value;
 		else if (!strcmp(name, "fill")) option_fill = value;
+		else if (!strcmp(name, "ram_base")) option_ram_base = value;
+		else if (!strcmp(name, "multipass")) eprintf("Multipass only supported on PMAS+.\n");
+		else if (!strcmp(name, "symoutput")) option_symoutput = value;
+		else eprintf("Unknown option '%s'.\n", name);
 	}
 	else if (DIRECTIVE("unset", PARSE_OTHER_DIRECTIVES) || DIRECTIVE("undefine", PARSE_OTHER_DIRECTIVES))
 	{
@@ -405,7 +467,7 @@ EEKS{printf("verify "); GetSymbolValue(name).print();}
 		int size = EvaluateExpression(strskipspace(line), &next);
 		int fill = next ? (int)EvaluateExpression(next) : -1;
 
-		if ((pass == 2) && (fill >= 0))
+		if ((pass == PASS_ASM) && (fill >= 0))
 		{
 			while (size--) reloc_data[addr++] = fill;
 		}
@@ -425,10 +487,19 @@ EEKS{printf("'%s' '%s'\n", strskipspace(line), s);}
 		//file->line = tmp;
 		ParseLine(tmp);			// TODO: parse more lines?
 	}
+	else if (DIRECTIVE("localprefix", PARSE_OTHER_DIRECTIVES))
+	{
+		char *s = strskipspace(line);
+		char *name = strtok(s, delim_chars);
+		strcpy(locallabelprefix, name);
+		locallabelprefix_set = true;
+	}
 	else if (DIRECTIVE("include", PARSE_OTHER_DIRECTIVES))
 	{
 		const char *p = strskipspace(line);
 		char *name = ParseString(p);
+		char *ss = name;
+		while (*ss) if ((*ss == '/') || (*ss == '\\')) *ss++ = os_slash; else ss++;
 		ParseFile(name);
 		free(name);
 	}
@@ -436,15 +507,22 @@ EEKS{printf("'%s' '%s'\n", strskipspace(line), s);}
 	{
 		const char *p = strskipspace(line);
 		char *name = ParseString(p);
-		FILE *fb = fopen(name, "rb");
+		FILE *fb = NULL;
+
+		for (int i=0; i<includepaths_count; i++)
+		{
+			char fullpath[TMPSIZE];
+			strcpy(fullpath, includepaths[i]);
+			strcat(fullpath, name);
+			char *ss = fullpath;
+			while (*ss) if ((*ss == '/') || (*ss == '\\')) *ss++ = os_slash; else ss++;
+
+			fb = fopen(fullpath, "rb");
+			if (fb) break;
+		}
 
 		if (!fb) { eprintf("Cannot open binary file '%s'.\n", name); eexit(); }
-		if (pass == 1)
-		{
-			fseek(fb, 0, SEEK_END);
-			addr += ftell(fb);
-		}
-		else	// if (pass == 2)
+		if (pass == PASS_ASM)
 		{
 			while (1)
 			{
@@ -453,13 +531,18 @@ EEKS{printf("'%s' '%s'\n", strskipspace(line), s);}
 				reloc_data[addr++] = c;
 			}
 		}
+		else
+		{
+			fseek(fb, 0, SEEK_END);
+			addr += ftell(fb);
+		}
 		fclose(fb);
 		free(name);
 	}
 	else if (DIRECTIVE("printf", PARSE_OTHER_DIRECTIVES))
 	{
 //printf("printf %d %d\n", parse_directives, PARSE_OTHER_DIRECTIVES);
-		if (pass == 2)
+		if (pass == PASS_ASM)
 		{
 			const char *inp = strskipspace(line);
 			ValueType n = EvaluateExpression(inp, &inp);
@@ -502,9 +585,37 @@ EEKS{printf("'%s' '%s'\n", strskipspace(line), s);}
 			}
 		}
 	}
+	else if (DIRECTIVE("error", PARSE_OTHER_DIRECTIVES))
+	{
+		if (pass == PASS_ASM)
+		{
+			ValueType n = EvaluateExpression(strskipspace(line));
+			const char *s = n.getString();
+			if (!s) { eprintf("String expression expected.\n"); goto exit; }
+			fprintf(stderr, "%s, line %d: Error : %s\n",
+				file->filename, file->line_num, s
+			);
+			if (++errors >= MAX_ERRORS)
+			{
+				fprintf(stderr, "Maximum number of errors reached.\n"); eexit();
+			}
+		}
+	}
+	else if (DIRECTIVE("warning", PARSE_OTHER_DIRECTIVES))
+	{
+		if (pass == PASS_ASM)
+		{
+			ValueType n = EvaluateExpression(strskipspace(line));
+			const char *s = n.getString();
+			if (!s) { eprintf("String expression expected.\n"); goto exit; }
+			printf("%s, line %d: Warning : %s\n",
+				file->filename, file->line_num, s
+			);
+		}
+	}
 	else if (DIRECTIVE("exit", PARSE_OTHER_DIRECTIVES))
 	{
-		if (pass == 2)
+		if (pass == PASS_ASM)
 		{
 			eprintf("Exiting.\n");
 			eexit();
@@ -548,25 +659,32 @@ void ParseLabel(const char *cline)
 		char *p = strchr(line, ':');
 		if (!p) { eprintf("Label does not end with a colon (':').\n"); return; }
 		*p = 0;
-		if (*line == '_')	// local label
+		if (strlen(line) == 0)	// temporary label
 		{
-			if (pass == 1)
+			if (pass == PASS_DEF)
+			{
+				NewTmpLabel(addr);
+			}
+		}
+		else if (*line == '_')	// local label
+		{
+			if (pass != PASS_ASM)
 			{
 				char tmp[TMPSIZE];
 				strcpy(tmp, locallabelprefix);
 				strcat(tmp, line);
 				if (IsSymbolDefined(tmp)) { eprintf("Symbol already defined.\n"); return; }
-				SetSymbolValue(tmp, ValueType(addr));
+				SetSymbolValue(tmp, ValueType(addr), SYM_LOC);
 			}
 		}
 		else	// normal label
 		{
 			strcpy(locallabelprefix, line);
-			if (pass == 1)
+			if (pass != PASS_ASM)
 			{
 				if (IsSymbolDefined(line)) { eprintf("Symbol already defined.\n"); return; }
 EEKS{printf("label %06X\n", addr);}
-				SetSymbolValue(line, ValueType(addr));
+				SetSymbolValue(line, ValueType(addr), SYM_LAB);
 			}
 		}
 		if (p) { /*file->line = p+1;*/ ParseLine(p + 1); }	// parse after colon
@@ -613,7 +731,7 @@ void ParseInstruction(const char *cline)
  */
 void MacroLine(const char *cline)
 {
-	if (pass == 1)
+	if (pass != PASS_ASM)
 	{
 EEKS{printf("record %s\n", cline);}
 		current_macro->AddLine(cline);
@@ -662,7 +780,8 @@ EEKS{printf("parseline %s\n", cline);}
 	{
 		ParseLabel(cline);
 	}
-	
+
+	tmplabel_goffset++;
 	UpdateMaxAddr();
 }
 
@@ -728,14 +847,6 @@ void ParseFile(const char *filename)
 					len = 0;
 				}
 			}
-
-			if (condition_stack != 0) {
-				file->line_num++;
-				strcpy(file->origline, "");
-				eprintf(".endif missing\n");
-				eexit();
-			}
-
 
 			FREE(file->filename);
 			fclose(file->fi);
@@ -850,15 +961,24 @@ int main(int argc, char *argv[])
 	strcpy(tmp, argv[0]);
 	char *p = strrchr(tmp, '/');
 	if (!p) p = strrchr(tmp, '\\');
-	if (p) *(p+1) = 0;
+	if (p) os_slash = *p;
+	if (p) *++p = 0;
 	//strcpy(p, "/src");
 	includepaths[includepaths_count++] = strdup(tmp);
+
+	/*
+	 * Special symbols
+	 */
+	SetSymbolValue("__PMAS__", ValueType(VERSIONN), 0);
+	SetSymbolValue("__LINE__", ValueType((long int)0), 0);
+	SetSymbolValue("__FILE__", ValueType(""), 0);
+	SetSymbolValue("__RAMBASE__", ValueType((long int)0), 0);
 
 	/*
 	 * parse
 	 */
 
-	for (pass=1; pass<=2; pass++)
+	for (pass=PASS_DEF; pass<=PASS_ASM; pass++)
 	{
 		addr = 0;
 		reloc_offset = 0;
@@ -870,6 +990,7 @@ int main(int argc, char *argv[])
 		option_farjump = 1;
 		option_word = 0;
 		option_fill = 0xFF;
+		option_ram_base = 0;
 		current_macro = 0;
 		parse_directives = PARSE_ALL_DIRECTIVES;
 		macro_id = 0;
@@ -877,10 +998,16 @@ int main(int argc, char *argv[])
 		condition_stack = 0;
 		condition[condition_stack] = true;
 		strcpy(locallabelprefix, "");
+		tmplabel_goffset = 0;
 		
 		FreeInstructions();
 
 		ParseFile(inputfile);
+
+		if ((condition_stack != 0) && (pass == PASS_ASM)) {
+			fprintf(stderr, "Error : detected open ifs.\n");
+			errors++;
+		}
 
 		if (errors > 0)
 		{
