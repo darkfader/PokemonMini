@@ -1,3 +1,6 @@
+; 
+; NOTE: same values as #defines in instruction.h of PMAS source
+;
 
 .set FLAG_CONT			0x01		; can continue to next location
 .set FLAG_REL			0x02		; PC relative (SHOULD THIS BE HERE?)
