@@ -1,6 +1,11 @@
 ; 
 ; NOTE: same values as #defines in instruction.h of PMAS source
 ;
+; To define a new instruction:
+; .instruction "format", flags, fixed pattern, size-in-bytes, argcount, [arg-bitshift, arg-flags]...
+; e.g.:
+; .instruction "nibbles ~0,~1,~2,~3", 0, 0x0000, 2, 4, 0,0x44,4,0x44,8,0x44,12,0x044
+;
 
 .set FLAG_CONT			0x01		; can continue to next location
 .set FLAG_REL			0x02		; PC relative (SHOULD THIS BE HERE?)
